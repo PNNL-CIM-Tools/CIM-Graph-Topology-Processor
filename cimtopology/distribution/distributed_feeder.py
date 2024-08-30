@@ -11,8 +11,18 @@ _log = logging.getLogger(__name__)
 
 
 # If GridAPPS-D Topology Processor output is not provided, build new topology:
-def create_distributed_feeder(feeder_model: FeederModel, filename):
-    
+def create_distributed_feeder(feeder_model: FeederModel, filename:str = None):
+    """
+    Creates the distributed feeder topology and writes it to an XML file.
+
+    This function builds the topology for a given feeder model by retrieving all
+    necessary edges, creating feeder areas, switch areas, and secondary areas. 
+    The completed topology is then written to an XML file.
+
+    Args:
+        feeder_model (FeederModel): The feeder model containing the CIM and graph information.
+        filename (str): Optional. The name of the file to which the topology will be written.
+    """
     cim = feeder_model.cim
     feeder_model.get_all_edges(cim.PowerTransformer)
     feeder_model.get_all_edges(cim.TransformerTank)
@@ -25,6 +35,7 @@ def create_distributed_feeder(feeder_model: FeederModel, filename):
     for sw_area_model in switch_area_models:
         create_secondary_areas(feeder_model, sw_area_model)
 
-    utils.write_xml(feeder_model, filename)
+    if filename is not None:
+        utils.write_xml(feeder_model, filename)
     
 
