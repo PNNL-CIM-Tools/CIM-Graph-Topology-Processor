@@ -39,6 +39,10 @@ class TopologyProcessor(GridAPPSD):
             feeder_context = FeederModel(container=feeder, connection=self.blazegraph, distributed=True)
             feeder_area_context = feeder_context.feeder_area_context
 
+            
+            return_message['feeders'] = {}
+
+
             return_message
 
             self.gapps.send(reply_to, return_message)
