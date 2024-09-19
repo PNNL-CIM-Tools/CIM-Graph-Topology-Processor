@@ -110,9 +110,9 @@ class DistributedTopology():
                     is_boundary = self.check_boundary(equipment, xfmr_boundary)
                     # If not a boundary, then parse that equipment
                     if not is_boundary:
-                        # Assign the equipment to current ResourceContainer
+                        # Assign the equipment to current SchedulingArea
                         self.contained_equipment.append(equipment)
-                        equipment.ResourceContainer = self.container
+                        equipment.SubSchedulingArea = self.container
                         self.DistArea.add_to_graph(equipment)
                         # Expand topology through all terminals of next equipment
                         for next_terminal in equipment.Terminals:
@@ -122,5 +122,5 @@ class DistributedTopology():
                     else:
                         # If equipment is a boundary, mark current terminal as boundary
                         self.boundaries.append(terminal)
-                        terminal.BoundedResourceContainer = self.container
+                        terminal.BoundedSchedulingArea = self.container
                         continue

@@ -23,7 +23,9 @@ def create_switch_areas(feeder_model: FeederModel, feeder_area_model: Distribute
         list[DistributedArea]: A list of the created switch area models added to the feeder area model.
     """
     cim = feeder_model.cim
-    feeder = feeder_model.container
+    feeder_id = feeder_model.container.identifier
+    feeder = feeder_model.graph[cim.Feeder][feeder_id]
+    feeder_area = feeder_area_model.container
 
     switch_classes = [cim.Breaker, cim.Sectionaliser,
                 cim.Recloser, cim.LoadBreakSwitch, cim.Switch]
@@ -34,13 +36,14 @@ def create_switch_areas(feeder_model: FeederModel, feeder_area_model: Distribute
             # Loop through both terminals of the switch
             for terminal in switch.Terminals:
                 # If terminal has an associated SwitchArea, then we already parsed it
-                if terminal.BoundedResourceContainer is None:
+                if terminal.BoundedSchedulingArea is None:
                     # Create a SwitchArea container following the naming convention of GridAPPS-D python
                     counter += 1
                     name = f'{feeder.mRID}.{counter}'
                     switch_area = cim.SwitchArea()
                     switch_area.uuid(name = name)
                     switch_area.name = name
+                    switch_area.FeederArea = feeder_area
                     feeder_model.add_to_graph(switch_area)
                     
                     # Create CIM-Graph Distributed GraphModel class

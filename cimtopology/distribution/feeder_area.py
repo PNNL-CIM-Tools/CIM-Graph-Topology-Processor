@@ -1,5 +1,5 @@
 import logging
-
+from uuid import UUID
 from cimgraph.models import FeederModel, DistributedArea
 from cimtopology.distribution.distributed_topology import DistributedTopology
 
@@ -21,26 +21,33 @@ def create_feeder_area(feeder_model: FeederModel) -> DistributedArea:
         DistributedArea: The created distributed area model containing the topology and boundary information.
     """
     cim = feeder_model.cim
-    feeder = feeder_model.container
+    feeder_id = feeder_model.container.identifier
+    feeder = feeder_model.graph[cim.Feeder][feeder_id]
     # Create FeederArea container object
     feeder_area = cim.FeederArea()
     feeder_area.uuid(name = f'{feeder.mRID}')
+    feeder_area.Feeder = feeder
+    feeder.FeederArea = feeder_area
+    feeder_area.Substation = feeder.NormalEnergizingSubstation
     feeder_model.add_to_graph(feeder_area)
     # Create CIM-Graph distributed model
     feeder_area_model = DistributedArea(connection = feeder_model.connection,
                                 container = feeder_area, distributed = True)
+    feeder_area_model.add_to_graph(feeder)
+    feeder_area_model.add_to_graph(feeder_area)
+    
     # Create topology class to trace the local area
     Topology = DistributedTopology(feeder_area_model)
 
     # Add all switches to FeederArea
     for cim_class in Topology.switch_classes:
         for switch in feeder_model.graph.get(cim_class, {}).values():
-            switch.ResourceContainer = feeder_area
+            switch.SubSchedulingArea = feeder_area
             feeder_area_model.add_to_graph(switch)
 
     # Build topology tree from head terminal to first switch
     for head_terminal in feeder.NormalHeadTerminal:
-        head_terminal.ResourceContainer = feeder_area
+        head_terminal.SubSchedulingArea = feeder_area
         Topology.expand_to_boundaries(head_terminal,xfmr_boundary=False)
 
     # Build topology tree from slack bus to first switch

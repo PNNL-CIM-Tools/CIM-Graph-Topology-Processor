@@ -25,19 +25,22 @@ def create_secondary_areas(feeder_model: FeederModel, switch_area_model: Distrib
     """
     cim = feeder_model.cim
     counter = -1
+    switch_area = switch_area_model.container
     # We can use the boundaries identified by switch area topology rather
     # parsing through all the transformers again to eliminate regulators
     for boundary_terminal in switch_area_model.boundaries:
         boundary_equipment = boundary_terminal.ConductingEquipment
         # If boundary is a transformer with terminal that does not bound
-        # another ResourceContainer, then we can assume it is a SecondaryArea
+        # another SubSchedulingArea, then we can assume it is a SecondaryArea
         if boundary_equipment.__class__ == cim.PowerTransformer:
             for terminal in boundary_equipment.Terminals:
-                if terminal.BoundedResourceContainer is None:
+                if terminal.BoundedSchedulingArea is None:
                     # Create new SecondaryArea using GridAPPS-D naming
                     counter += 1
+                    name = f'{switch_area_model.container.name}.{counter}'
                     sec_area = cim.SecondaryArea()
-                    sec_area.uuid(name = f'{switch_area_model.container.name}.{counter}')
+                    sec_area.uuid(name = name)
+                    sec_area.SwitchArea = switch_area
                     feeder_model.add_to_graph(sec_area)
                     # Create CIM-Graph Distributed Model
                     SecDistArea = DistributedArea(connection = feeder_model.connection,
