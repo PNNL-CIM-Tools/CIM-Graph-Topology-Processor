@@ -1,14 +1,18 @@
-import os, json, time
-from gridappsd import GridAPPSD, topics as t
+import os
+import json
+import time
+import logging
+from gridappsd import GridAPPSD
 from gridappsd.topics import service_input_topic, service_output_topic
-from cimgraph.models import FeederModel, DistributedArea
 from cimgraph.databases import ConnectionParameters, BlazegraphConnection
 
+from cimtopology.utils import TopologyMessage
+import cimgraph.data_profile.cimhub_2023 as cim
 
 class TopologyProcessor(GridAPPSD):
     
     def __init__(self):
-        os.environ['GRIDAPPSD_APPLICATION_ID'] = 'gridappsd-topology-processor'
+        os.environ['GRIDAPPSD_APPLICATION_ID'] = 'topology-background-service'
         os.environ['GRIDAPPSD_APPLICATION_STATUS'] = 'STARTED'
         os.environ['GRIDAPPSD_USER'] = 'app_user'
         os.environ['GRIDAPPSD_PASSWORD'] = '1234App'
@@ -20,51 +24,55 @@ class TopologyProcessor(GridAPPSD):
         self.blazegraph = BlazegraphConnection(params)
 
         
-        self.log.info('Topology daemon started')
+        self.log.info('Topology Background Service Started')
 
     
     # GridAPPS-D service
     def on_message(self, headers, message):
-        model_mrid = message['modelID']
+        model_mrid = message['mRID']
         reply_to = headers['reply-to']
         
         
-
-
-        
-        if message['requestType'] == 'GET_SWITCH_AREAS':
+        if message['requestType'] == 'GET_DISTRIBUTED_AREAS':
             
-            return_message = {}
-            feeder = self.blazegraph.get_object(mrid=model_mrid)
-            feeder_context = FeederModel(container=feeder, connection=self.blazegraph, distributed=True)
-            feeder_area_context = feeder_context.feeder_area_context
-
+            self.log.info(f'Building Distributed Areas for {model_mrid}')
             
-            return_message['feeders'] = {}
+            topo_message = TopologyMessage()
+            container = self.blazegraph.get_object(mrid=model_mrid)
 
+            if isinstance(container, cim.Feeder):
+                topo_message.get_context_from_feeder(container, self.blazegraph)
 
-            return_message
+            elif isinstance(container, cim.FeederArea):
+                pass
+                
+            elif isinstance(container, cim.DistributionArea):
+                pass
 
+            return_message = json.dumps(topo_message.message, indent=4)
+            del topo_message
             self.gapps.send(reply_to, return_message)
             
         elif message['requestType'] == 'GET_BASE_TOPOLOGY':
             Topology = self.get_base_topology(model_mrid)
-            message = {  
-                'modelID': model_mrid,
-                'feeders': Topology.Feeders,
-                'islands': Topology.Islands,
-                'connectivity': Topology.ConnNodeDict,
-                'equipment': Topology.EquipDict
+            return_message = {  
+                "response": "not yet supported"
+                # 'modelID': model_mrid,
+                # 'feeders': Topology.Feeders,
+                # 'islands': Topology.Islands,
+                # 'connectivity': Topology.ConnNodeDict,
+                # 'equipment': Topology.EquipDict
             }
             self.gapps.send(reply_to, message)
         
         elif message['requestType'] == 'GET_SNAPSHOT_TOPOLOGY':
-            [Topology, timestamp] = self.get_snapshot_topology(model_mrid, message['simulationID'], message['timestamp'])
+            # [Topology, timestamp] = self.get_snapshot_topology(model_mrid, message['simulationID'], message['timestamp'])
             message = {
-                'modelID': model_mrid,
-                'feeders': Topology.Feeders,
-                'islands': Topology.Islands,
-                'timestamp': timestamp
+                "response": "not yet supported"
+                # 'modelID': model_mrid,
+                # 'feeders': Topology.Feeders,
+                # 'islands': Topology.Islands,
+                # 'timestamp': timestamp
             }
             self.gapps.send(reply_to, message)
         else:
@@ -73,90 +81,17 @@ class TopologyProcessor(GridAPPSD):
         
     def get_switch_areas(self, model_mrid):
         self.log.info('Building switch areas for ' + str(model_mrid))
-        DistTopo = DistributedTopology(self.gapps, model_mrid)
-        message = DistTopo.create_switch_areas(model_mrid)
-        return message
+        # DistTopo = DistributedTopology(self.gapps, model_mrid)
+        # message = DistTopo.create_switch_areas(model_mrid)
+        # return message
         
-    def get_base_topology(self, model_mrid):
-        self.log.info('Building base topology for ' + str(model_mrid))
-        Topology = TopologyDictionary(self.gapps, model_mrid)
-        network = NetworkModel(self.gapps)
-        network.build_equip_dicts(model_mrid, Topology)
-        EqTypes = ['ACLineSegment', 'PowerTransformer', 'TransformerTank', 'SynchronousMachine', 'PowerElectronicsConnection']
-        Topology.build_linknet(EqTypes)
-        Topology.update_switches()
-        Topology.build_feeder_islands()
-        return Topology     
+      
 
 
-        
-    def get_snapshot_topology(self, model_mrid, simulation_id, timestamp):
-        self.log.info('Building snapshot topology for ' + str(model_mrid))
-        Topology = TopologyDictionary(self.gapps, model_mrid)
-        network = NetworkModel(self.gapps)
-        network.build_equip_dicts(model_mrid, Topology)
-        EqTypes = ['ACLineSegment', 'PowerTransformer', 'TransformerTank', 'SynchronousMachine']
-        Topology.build_linknet(EqTypes)
-        
-         #Query for switch position measurement mRIDs
-        request = {"modelId": model_mrid,
-                   "requestType": "QUERY_OBJECT_MEASUREMENTS",
-                   "resultFormat": "JSON",
-                   "objectType": "LoadBreakSwitch"
-                   }
-
-        response = self.gapps.get_response(t.REQUEST_POWERGRID_DATA,request,timeout=15)
-        
-        equipment_dict = {}
-        measurement_dict = {}
-        meas_map={}
-
-        for measurement in response["data"]:
-            if measurement["type"] == "Pos":
-                measid = measurement["measid"]
-                meas_map[measid] = {}
-                meas_map[measid]['eqtype'] = measurement['eqtype']
-                meas_map[measid]['eqid'] = measurement["eqid"]
-
-
-
-        # Query for switch measurments
-        message = {
-            "queryMeasurement":"simulation",
-            "queryFilter":{"simulation_id": str(simulation_id),
-                "startTime": str(round(int(timestamp)-1)),
-                "endTime": str(round(int(timestamp)+3)),
-                "measurement_mrid": list(measurement_dict.keys())
-                          },
-                "responseFormat":"JSON" }
-
-
-        influx_response = self.gapps.get_response(t.TIMESERIES, message) # Pass API call
-        import time
-        counter=0
-        while not influx_response['data'] and counter <5:
-            influx_response = self.gapps.get_response(t.TIMESERIES, message) # Pass API call
-            self.log.info('Waiting 10 seconds for data to be written to Timeseries Database')
-            time.sleep(10)
-            counter=counter+1
-            if counter==5: self.log.info("No Timeseries data found. Returning default topology")
-
-        # Parse timeseries data for current switch positions
-        for measurement in influx_response["data"]:
-            measid = measurement["measurement_mrid"]
-            time = measurement["time"]
-            if measid in meas_map:
-                eqid = meas_map[measid]['eqid']
-                eqtype = meas_map[measid]['eqtype']
-                Topology.EquipDict[eqtype][eqid]["open"] = measurement['value']
-                
-        Topology.update_switches()
-        Topology.build_feeder_islands()
-        
-        return Topology, time
+     
             
 def _main():
-    topic = "goss.gridappsd.request.data.topology"
+    topic = "goss.gridappsd.request.data.cimtopology2"
     os.environ['GRIDAPPSD_USER'] = 'app_user'
     os.environ['GRIDAPPSD_PASSWORD'] = '1234App'
     gapps = GridAPPSD()

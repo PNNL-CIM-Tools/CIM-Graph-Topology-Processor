@@ -23,13 +23,26 @@ def create_feeder_area(feeder_model: FeederModel) -> DistributedArea:
     cim = feeder_model.cim
     feeder_id = feeder_model.container.identifier
     feeder = feeder_model.graph[cim.Feeder][feeder_id]
+    substation = feeder.NormalEnergizingSubstation
+    geo_region = substation.Region
     # Create FeederArea container object
     feeder_area = cim.FeederArea()
-    feeder_area.uuid(name = f'{feeder.mRID}')
+    feeder_area.uuid(name = feeder.mRID)
+    distribution_area = cim.DistributionArea()
+    distribution_area.uuid(name = geo_region.mRID)
+
     feeder_area.Feeder = feeder
-    feeder.FeederArea = feeder_area
     feeder_area.Substation = feeder.NormalEnergizingSubstation
+    feeder_area.DistributionArea = distribution_area
+
+    feeder.FeederArea = feeder_area
+    feeder.DistributionArea = distribution_area
+    
+    substation.SubSchedulingArea = distribution_area
+
     feeder_model.add_to_graph(feeder_area)
+    feeder_model.add_to_graph(distribution_area)
+
     # Create CIM-Graph distributed model
     feeder_area_model = DistributedArea(connection = feeder_model.connection,
                                 container = feeder_area, distributed = True)

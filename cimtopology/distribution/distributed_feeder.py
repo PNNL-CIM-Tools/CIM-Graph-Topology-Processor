@@ -1,11 +1,12 @@
 import logging
 
-
+from cimgraph.databases import ConnectionInterface
 from cimgraph.models import FeederModel, DistributedArea
 from cimtopology.distribution.feeder_area import create_feeder_area
 from cimtopology.distribution.switch_area import create_switch_areas
 from cimtopology.distribution.secondary_area import create_secondary_areas
 import cimgraph.utils as utils
+import cimgraph.data_profile.cimhub_2023 as cim #TODO: Better typing
 
 _log = logging.getLogger(__name__)
 
@@ -39,34 +40,14 @@ def create_distributed_feeder(feeder_model: FeederModel, filename:str = None):
         utils.write_xml(feeder_model, filename)
     
 
+    
+
+
+    
+
+
 
 
         
-def identify_addressable(network: DistributedArea, 
-                         equipment_list: list[str] = []) -> list[str]:
-    cim = network.cim
-    addressable_classes = [cim.Switch, cim.Breaker, cim.Disconnector,
-        cim.Recloser, cim.LoadBreakSwitch, cim.Sectionaliser,
-        cim.PowerElectronicsConnection, cim.PowerElectronicsUnit,
-        cim.PhotovoltaticUnit, cim.BatteryUnit, cim.PowerElectronicsWindUnit,
-        cim.RatioTapChanger, 
-        cim.ShuntCompensator, cim.LinearShuntCompensator,
-        cim.AsynchronousMachine, cim.SynchronousMachine]
-    
-    for class_type in addressable_classes:
-        for equipment in network.graph.get(class_type, {}).values():
-            equipment_list.append(equipment.uri())
-    return equipment_list
 
-def identify_unaddressable(network: DistributedArea, 
-                         equipment_list: list[str] = []) -> list[str]:
-    cim = network.cim
-    unaddressable_classes = [cim.ACLineSegment, cim.Fuse,
-        cim.PowerTransformer, cim.TransformerTank,
-        cim.EnergySource, cim.EnergyConsumer]
-    
-    for class_type in unaddressable_classes:
-        for equipment in network.graph.get(class_type, {}).values():
-            equipment_list.append(equipment.uri())
-    return equipment_list
 

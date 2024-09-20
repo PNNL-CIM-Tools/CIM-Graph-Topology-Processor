@@ -262,6 +262,7 @@
   <cim:IdentifiedObject.name>house_Loc</cim:IdentifiedObject.name>
 </cim:Location>
 <cim:Feeder rdf:about="urn:uuid:49AD8E07-3BF9-A4E2-CB8F-C3722F837B62">
+  <cim:Feeder.DistributionArea rdf:resource="urn:uuid:94dfdc1c-8b80-4e90-96e1-504305eddcc2"/>
   <cim:Feeder.FeederArea rdf:resource="urn:uuid:b6373777-16cb-45d7-9bf0-6f51d91cf949"/>
   <cim:Feeder.NormalEnergizingSubstation rdf:resource="urn:uuid:6C62C905-6FC7-653D-9F1E-1340F974A587"/>
   <cim:PowerSystemResource.Location rdf:resource="urn:uuid:8E4E3C92-0B7A-4F74-8FD2-CC10F74E452F"/>
@@ -3973,10 +3974,15 @@
   <cim:IdentifiedObject.name>OpLimI_400.0_600.0_Emerg</cim:IdentifiedObject.name>
 </cim:CurrentLimit>
 <cim:FeederArea rdf:about="urn:uuid:b6373777-16cb-45d7-9bf0-6f51d91cf949">
+  <cim:FeederArea.DistributionArea rdf:resource="urn:uuid:94dfdc1c-8b80-4e90-96e1-504305eddcc2"/>
   <cim:FeederArea.Feeder rdf:resource="urn:uuid:49AD8E07-3BF9-A4E2-CB8F-C3722F837B62"/>
   <cim:IdentifiedObject.mRID>b6373777-16cb-45d7-9bf0-6f51d91cf949</cim:IdentifiedObject.mRID>
   <cim:IdentifiedObject.name>49AD8E07-3BF9-A4E2-CB8F-C3722F837B62</cim:IdentifiedObject.name>
 </cim:FeederArea>
+<cim:DistributionArea rdf:about="urn:uuid:94dfdc1c-8b80-4e90-96e1-504305eddcc2">
+  <cim:IdentifiedObject.mRID>94dfdc1c-8b80-4e90-96e1-504305eddcc2</cim:IdentifiedObject.mRID>
+  <cim:IdentifiedObject.name>ABEB635F-729D-24BF-B8A4-E2EF268D8B9E</cim:IdentifiedObject.name>
+</cim:DistributionArea>
 <cim:SwitchArea rdf:about="urn:uuid:2cff1e26-8f8f-42b5-b054-87f28523d303">
   <cim:SwitchArea.FeederArea rdf:resource="urn:uuid:b6373777-16cb-45d7-9bf0-6f51d91cf949"/>
   <cim:IdentifiedObject.mRID>2cff1e26-8f8f-42b5-b054-87f28523d303</cim:IdentifiedObject.mRID>
