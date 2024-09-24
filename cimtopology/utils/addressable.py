@@ -13,9 +13,8 @@ def identify_addressable(network: DistributedArea,
         cim.AsynchronousMachine, cim.SynchronousMachine]
     
     for class_type in addressable_classes:
-        network.get_all_edges(class_type)
         for equipment in network.graph.get(class_type, {}).values():
-            equipment_uuid_list.append(equipment.name)
+            equipment_uuid_list.append(equipment.uri())
     return equipment_uuid_list
 
 def identify_unaddressable(network: DistributedArea, 
