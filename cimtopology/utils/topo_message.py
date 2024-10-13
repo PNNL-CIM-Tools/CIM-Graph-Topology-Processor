@@ -2,6 +2,7 @@ from cimgraph.databases import ConnectionInterface
 from cimgraph.models import FeederModel, DistributedArea
 import cimgraph.data_profile.cimhub_2023 as cim
 import cimtopology.utils as utils
+import cimgraph.utils as cgutils
 
 class TopologyMessage():
 
@@ -16,6 +17,7 @@ class TopologyMessage():
     def get_context_from_feeder(self, feeder: cim.Feeder, connection: ConnectionInterface) -> None:
 
         feeder_model = FeederModel(container=feeder, connection=connection, distributed=True)
+        cgutils.get_all_data(feeder_model)
         substation = feeder_model.get_from_triple(feeder, 'Feeder.NormalEnergizingSubstation')[0]
         distribution_area = feeder_model.get_from_triple(feeder, 'Feeder.DistributionArea')[0]
         feeder_area_model = feeder_model.distributed_areas[0]
@@ -35,36 +37,36 @@ class TopologyMessage():
 
         msg['mRID'] = feeder_area.uri()
         msg['Feeder'] = feeder.uri()
-        msg['AddressableEquipment'] = utils.identify_addressable(feeder_area_model)
-        msg['UnaddressableEquipment'] = utils.identify_unaddressable(feeder_area_model)
-        msg['Measurements'] = utils.identify_measurements(feeder_area_model)
+        msg['AddressableEquipment'] = utils.identify_addressable(feeder_area_model, [])
+        msg['UnaddressableEquipment'] = utils.identify_unaddressable(feeder_area_model, [])
+        msg['Measurements'] = utils.identify_measurements(feeder_area_model, [])
         msg['SwitchAreas'] = []
 
         for switch_area_model in feeder_area_model.distributed_areas:
-            sa_msg = self.add_switch_area(switch_area_model)
-            msg['SwitchAreas'].append(sa_msg)
+            sw_msg = self.add_switch_area(switch_area_model)
+            msg['SwitchAreas'].append(sw_msg)
 
         return msg
 
         
 
     def add_switch_area(self, switch_area_model:DistributedArea) -> dict:
-        msg = {}
+        sw_msg = {}
         switch_area = switch_area_model.container
         feeder_area = switch_area_model.get_from_triple(switch_area, 'SwitchArea.FeederArea')[0]
 
-        msg['mRID'] = switch_area.uri()
-        msg['FeederArea'] = feeder_area.uri()
-        msg['AddressableEquipment'] = utils.identify_addressable(switch_area_model)
-        msg['UnaddressableEquipment'] = utils.identify_unaddressable(switch_area_model)
-        msg['Measurements'] = utils.identify_measurements(switch_area_model)
-        msg['SecondaryAreas'] = []
+        sw_msg['mRID'] = switch_area.uri()
+        sw_msg['FeederArea'] = feeder_area.uri()
+        sw_msg['AddressableEquipment'] = utils.identify_addressable(switch_area_model, [])
+        sw_msg['UnaddressableEquipment'] = utils.identify_unaddressable(switch_area_model, [])
+        sw_msg['Measurements'] = utils.identify_measurements(switch_area_model, [])
+        sw_msg['SecondaryAreas'] = []
 
         for secondary_area_model in switch_area_model.distributed_areas:
             sec_msg = self.add_secondary_area(secondary_area_model)
-            msg['SecondaryAreas'].append(sec_msg)
+            sw_msg['SecondaryAreas'].append(sec_msg)
 
-        return msg
+        return sw_msg
 
     def add_secondary_area(self, secondary_area_model: DistributedArea) -> dict:
         msg = {}
@@ -73,8 +75,8 @@ class TopologyMessage():
 
         msg['mRID'] = secondary_area.uri()
         msg['Feeder'] = switch_area.uri()
-        msg['AddressableEquipment'] = utils.identify_addressable(secondary_area_model)
-        msg['UnaddressableEquipment'] = utils.identify_unaddressable(secondary_area_model)
-        msg['Measurements'] = utils.identify_measurements(secondary_area_model)
+        msg['AddressableEquipment'] = utils.identify_addressable(secondary_area_model, [])
+        msg['UnaddressableEquipment'] = utils.identify_unaddressable(secondary_area_model, [])
+        msg['Measurements'] = utils.identify_measurements(secondary_area_model, [])
         
         return msg

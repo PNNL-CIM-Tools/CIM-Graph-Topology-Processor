@@ -111,9 +111,7 @@ class DistributedTopology():
                     # If not a boundary, then parse that equipment
                     if not is_boundary:
                         # Assign the equipment to current SchedulingArea
-                        self.contained_equipment.append(equipment)
-                        equipment.SubSchedulingArea = self.container
-                        self.DistArea.add_to_graph(equipment)
+                        self.add_to_area(equipment)
                         # Expand topology through all terminals of next equipment
                         for next_terminal in equipment.Terminals:
                             if next_terminal.identifier not in self.parsed:
@@ -123,4 +121,30 @@ class DistributedTopology():
                         # If equipment is a boundary, mark current terminal as boundary
                         self.boundaries.append(terminal)
                         terminal.BoundedSchedulingArea = self.container
+                        if isinstance(equipment, self.cim.PowerTransformer):
+                            self.add_to_area(equipment) #exception for xfmrs
+                            
                         continue
+
+    def add_to_area(self, equipment:cim.ConductingEquipment) -> None:
+        """
+        Adds a ConductingEquipment object to the current SubSchedulingArea and any
+        Equipment that may be associated with the area but is not picked up by
+        the topology trace
+
+        Args:
+            Equipment (cim.ConductingEquipment): The equipment to be added to the area
+        """
+        self.contained_equipment.append(equipment)
+        equipment.SubSchedulingArea = self.container
+        self.DistArea.add_to_graph(equipment)
+        if isinstance(equipment, self.cim.PowerTransformer):
+            for tank in equipment.TransformerTanks:
+                self.contained_equipment.append(tank)
+                tank.SubSchedulingArea = self.container
+                self.DistArea.add_to_graph(tank)
+        elif isinstance(equipment, self.cim.PowerElectronicsConnection):
+            for unit in equipment.PowerElectronicsUnit:
+                self.contained_equipment.append(unit)
+                unit.SubSchedulingArea = self.container
+                self.DistArea.add_to_graph(unit)

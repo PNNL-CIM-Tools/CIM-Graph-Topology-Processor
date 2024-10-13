@@ -55,5 +55,10 @@ def create_switch_areas(feeder_model: FeederModel, feeder_area_model: Distribute
                     Topology.expand_to_boundaries(terminal)
                     switch_area_model.boundaries = Topology.boundaries
                     feeder_area_model.distributed_areas.append(switch_area_model)
+                    
+                    # Add transformers to the switch area
+                    for transformer in switch_area_model.graph.get(cim.PowerTransformer, {}).values():
+                        transformer.SubSchedulingArea = switch_area_model.container
+                        switch_area_model.add_to_graph(transformer)
 
     return feeder_area_model.distributed_areas
