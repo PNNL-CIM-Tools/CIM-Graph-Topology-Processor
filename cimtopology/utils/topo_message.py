@@ -37,9 +37,9 @@ class TopologyMessage():
 
         msg['mRID'] = feeder_area.uri()
         msg['Feeder'] = feeder.uri()
-        msg['AddressableEquipment'] = utils.identify_addressable(feeder_area_model, [])
-        msg['UnaddressableEquipment'] = utils.identify_unaddressable(feeder_area_model, [])
-        msg['Measurements'] = utils.identify_measurements(feeder_area_model, [])
+        msg['AddressableEquipment'] = utils.identify_addressable(feeder_area_model)
+        msg['UnaddressableEquipment'] = utils.identify_unaddressable(feeder_area_model)
+        msg['Measurements'] = utils.identify_measurements(feeder_area_model)
         msg['SwitchAreas'] = []
 
         for switch_area_model in feeder_area_model.distributed_areas:
@@ -57,9 +57,9 @@ class TopologyMessage():
 
         sw_msg['mRID'] = switch_area.uri()
         sw_msg['FeederArea'] = feeder_area.uri()
-        sw_msg['AddressableEquipment'] = utils.identify_addressable(switch_area_model, [])
-        sw_msg['UnaddressableEquipment'] = utils.identify_unaddressable(switch_area_model, [])
-        sw_msg['Measurements'] = utils.identify_measurements(switch_area_model, [])
+        sw_msg['AddressableEquipment'] = utils.identify_addressable(switch_area_model)
+        sw_msg['UnaddressableEquipment'] = utils.identify_unaddressable(switch_area_model)
+        sw_msg['Measurements'] = utils.identify_measurements(switch_area_model)
         sw_msg['SecondaryAreas'] = []
 
         for secondary_area_model in switch_area_model.distributed_areas:
@@ -75,8 +75,8 @@ class TopologyMessage():
 
         msg['mRID'] = secondary_area.uri()
         msg['Feeder'] = switch_area.uri()
-        msg['AddressableEquipment'] = utils.identify_addressable(secondary_area_model, [])
-        msg['UnaddressableEquipment'] = utils.identify_unaddressable(secondary_area_model, [])
-        msg['Measurements'] = utils.identify_measurements(secondary_area_model, [])
+        msg['AddressableEquipment'] = utils.identify_addressable(secondary_area_model)
+        msg['UnaddressableEquipment'] = utils.identify_unaddressable(secondary_area_model)
+        msg['Measurements'] = utils.identify_measurements(secondary_area_model)
         
         return msg
