@@ -1,2 +1,2 @@
 from cimtopology.utils.addressable import *
-from cimtopology.utils.topo_message import TopologyMessage
+from cimtopology.utils.distributed_topo_message import DistributedTopologyMessage

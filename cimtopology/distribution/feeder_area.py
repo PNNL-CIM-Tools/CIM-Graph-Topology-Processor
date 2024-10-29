@@ -38,7 +38,7 @@ def create_feeder_area(feeder_model: FeederModel) -> DistributedArea:
     feeder.FeederArea = feeder_area
     feeder.DistributionArea = distribution_area
     
-    substation.SubSchedulingArea = distribution_area
+    substation.SchedulingArea = distribution_area
 
     feeder_model.add_to_graph(feeder_area)
     feeder_model.add_to_graph(distribution_area)

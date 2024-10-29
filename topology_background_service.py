@@ -6,7 +6,7 @@ from gridappsd import GridAPPSD
 from gridappsd.topics import service_input_topic, service_output_topic
 from cimgraph.databases import ConnectionParameters, BlazegraphConnection
 
-from cimtopology.utils import TopologyMessage
+from cimtopology.utils import DistributedTopologyMessage
 import cimgraph.data_profile.cimhub_2023 as cim
 
 class TopologyProcessor(GridAPPSD):
@@ -37,17 +37,17 @@ class TopologyProcessor(GridAPPSD):
             
             self.log.info(f'Building Distributed Areas for {model_mrid}')
             
-            topo_message = TopologyMessage()
+            topo_message = DistributedTopologyMessage()
             container = self.blazegraph.get_object(mrid=model_mrid)
 
             if isinstance(container, cim.Feeder):
                 topo_message.get_context_from_feeder(container, self.blazegraph)
 
             elif isinstance(container, cim.FeederArea):
-                pass
+                topo_message.get_context_from_feeder_area(container, self.blazegraph)
                 
             elif isinstance(container, cim.DistributionArea):
-                pass
+                topo_message.get_context_from_distribution_area(container, self.blazegraph)
 
             return_message = json.dumps(topo_message.message, indent=4)
             del topo_message
@@ -91,7 +91,7 @@ class TopologyProcessor(GridAPPSD):
      
             
 def _main():
-    topic = "goss.gridappsd.request.data.cimtopology2"
+    topic = "goss.gridappsd.request.data.cimtopology"
     os.environ['GRIDAPPSD_USER'] = 'app_user'
     os.environ['GRIDAPPSD_PASSWORD'] = '1234App'
     gapps = GridAPPSD()
