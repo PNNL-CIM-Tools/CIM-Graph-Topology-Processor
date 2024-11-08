@@ -57,3 +57,11 @@ def identify_measurements(network: DistributedArea,
             equipment_list.append(json.loads(equipment.__repr__()))
     return equipment_list
 
+def identify_boundaries(network: DistributedArea) -> list[jsonld]:
+    
+    terminals = []
+    for terminal in network.container.BoundaryTerminals:
+        terminals.append(json.loads(terminal.__repr__()))
+
+    return terminals
+
