@@ -71,22 +71,47 @@ class DistributedTopologyMessage():
         distribution_area_model = DistributedArea(container=distribution_area,
                                             connection=connection, distributed=True)
         distribution_area_model.get_all_edges(cim.DistributionArea)
+        distribution_area_model.get_all_edges(cim.Substation)
 
-        self.message['DistributionArea']['mRID'] = distribution_area.uri()
+        self.message['DistributionArea'] = json.loads(distribution_area.__repr__())
+        self.message['DistributionArea']['Substations'] = []
 
         
         for substation in distribution_area.Substations:
-            self.message['DistributionArea']['Substations'].append(json.loads(substation.__repr__()))
+            sub_msg = json.loads(substation.__repr__())
+            sub_msg['NormalEnergizedFeeder'] = []
 
-        for feeder in distribution_area.Feeders:
-            self.message['DistributionArea']['Feeders'].append(json.loads(feeder.__repr__()))
+            for feeder in substation.NormalEnergizedFeeder:
+                feeder_model = FeederModel(container=feeder, connection=connection, distributed=True)
+                
+                fdr_msg = json.loads(feeder.__repr__())
+                # try:
+                feeder_area_model = feeder_model.distributed_areas[0]
+                feeder_area_model.get_all_edges(cim.FeederArea)
+                fdr_msg['FeederArea'] = self.add_feeder_area(feeder_area_model)
+                # except:
+                #     _log.warning(f'Feeder {feeder.uri()} does not have distributed areas')
+
+                sub_msg['NormalEnergizedFeeder'].append(fdr_msg)
+                del feeder_model
+
+            new_sub = cim.Substation()
+            new_sub.uuid(mRID = substation.uri())
+            sub_model = DistributedArea(container=new_sub,
+                                            connection=connection, distributed=False)
+            sub_model.get_all_edges(cim.Substation)
+            sub_model.get_all_edges(cim.ConnectivityNode)
+            sub_model.get_all_edges(cim.Terminal)
+            sub_msg['AddressableEquipment'] = utils.identify_addressable(sub_model)
+            sub_msg['UnaddressableEquipment'] = utils.identify_unaddressable(sub_model)
+            sub_msg['Measurements'] = utils.identify_measurements(sub_model)
+
             
-        for feeder_area in distribution_area.FeederAreas:
-            feeder_area_model = DistributedArea(container=feeder_area,
-                                            connection=connection, distributed=True)
-            feeder_area_model.get_all_edges(cim.FeederArea)
-            msg = self.add_feeder_area(feeder_area_model)
-            self.message['DistributionArea']['FeederAreas'].append(msg)
+            
+            self.message['DistributionArea']['Substations'].append(sub_msg)
+
+
+
 
 
 

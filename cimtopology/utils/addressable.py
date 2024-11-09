@@ -50,11 +50,11 @@ def identify_measurements(network: DistributedArea,
         equipment_list = []
 
     cim = network.cim    
-    unaddressable_classes = [cim.Measurement, cim.Analog, cim.Discrete]
+    meas_classes = [cim.Measurement, cim.Analog, cim.Discrete]
     
-    for class_type in unaddressable_classes:
-        for equipment in network.graph.get(class_type, {}).values():
-            equipment_list.append(json.loads(equipment.__repr__()))
+    for class_type in meas_classes:
+        for measurement in network.graph.get(class_type, {}).values():
+            equipment_list.append(json.loads(measurement.__repr__()))
     return equipment_list
 
 def identify_boundaries(network: DistributedArea) -> list[jsonld]:
