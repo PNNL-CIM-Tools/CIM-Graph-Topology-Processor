@@ -12,7 +12,7 @@ readme = "README.md"
 python = ">=3.10,<4.0"
 #cim-builer = "^0.1.0a0"
 #cim-loader = "^0.1.0a0"
-cim-graph = "^0.1.5a0"
+cim-graph = "^0.4.3a0"
 
 [tool.poetry.extras]
 gridappsd = ["gridappsd-python"]

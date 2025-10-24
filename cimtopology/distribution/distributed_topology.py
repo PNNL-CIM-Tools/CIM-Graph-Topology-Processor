@@ -1,7 +1,7 @@
 import logging
 
 from cimgraph.models import DistributedArea
-import cimgraph.data_profile.cimhub_2023 as cim #TODO: cleaner typing
+import cimgraph.data_profile.cimhub_ufls as cim #TODO: cleaner typing
 
 _log = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class DistributedTopology():
             DistArea (DistributedArea): The distributed area model to be managed.
         """
         self.DistArea = DistArea
-        self.cim = DistArea.cim
+        self.cim:cim = DistArea.cim
         self.container = DistArea.container
         self.boundaries = []
         self.parsed = []
@@ -52,7 +52,7 @@ class DistributedTopology():
         # If asked to check transformers
         elif xfmr_boundary:
             # Then check if it is a PowerTransformer
-            if equipment.__class__ == cim.PowerTransformer:
+            if isinstance(equipment, self.cim.PowerTransformer):
                 found_voltages = False
                 is_boundary = True
                 voltages = []
