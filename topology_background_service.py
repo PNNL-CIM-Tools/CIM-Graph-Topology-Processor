@@ -16,12 +16,16 @@ class TopologyProcessor(GridAPPSD):
         os.environ['GRIDAPPSD_APPLICATION_STATUS'] = 'STARTED'
         os.environ['GRIDAPPSD_USER'] = 'app_user'
         os.environ['GRIDAPPSD_PASSWORD'] = '1234App'
+        os.environ['CIMG_CIM_PROFILE'] = 'cimhub_2023'
+        os.environ['CIMG_URL'] = 'http://localhost:8889/bigdata/namespace/kb/sparql'
+        os.environ['CIMG_NAMESPACE'] = 'http://iec.ch/TC57/CIM100#'
+        os.environ['CIMG_IEC61970_301'] = '8'
+        os.environ['CIMG_USE_UNITS'] = 'false'
         gapps = GridAPPSD()
         assert gapps.connected
         self.gapps = gapps
         self.log = self.gapps.get_logger()
-        params = ConnectionParameters(url = "http://localhost:8889/bigdata/namespace/kb/sparql", cim_profile='cimhub_2023', iec61970_301=8)
-        self.blazegraph = BlazegraphConnection(params)
+        self.blazegraph = BlazegraphConnection()
 
         
         self.log.info('Topology Background Service Started')
