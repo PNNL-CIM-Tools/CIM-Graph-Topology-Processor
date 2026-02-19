@@ -1,7 +1,9 @@
 import logging
 from uuid import UUID
 from cimgraph.models import FeederModel, DistributedArea
-from cimtopology.distribution.distributed_topology import DistributedTopology
+from cimtopology.distribution.distributed_topology import (
+    get_switch_classes, expand_to_boundaries
+)
 
 _log = logging.getLogger(__name__)
 
@@ -48,12 +50,15 @@ def create_feeder_area(feeder_model: FeederModel) -> DistributedArea:
                                 container = feeder_area, distributed = True)
     feeder_area_model.add_to_graph(feeder)
     feeder_area_model.add_to_graph(feeder_area)
-    
-    # Create topology class to trace the local area
-    Topology = DistributedTopology(feeder_area_model)
+
+    # Initialize state for topology traversal
+    boundaries = []
+    parsed = []
+    contained_equipment = []
+    switch_classes = get_switch_classes(cim)
 
     # Add all switches to FeederArea
-    for cim_class in Topology.switch_classes:
+    for cim_class in switch_classes:
         for switch in feeder_model.graph.get(cim_class, {}).values():
             switch.SubSchedulingArea = feeder_area
             feeder_area_model.add_to_graph(switch)
@@ -61,14 +66,18 @@ def create_feeder_area(feeder_model: FeederModel) -> DistributedArea:
     # Build topology tree from head terminal to first switch
     for head_terminal in feeder.NormalHeadTerminal:
         head_terminal.SubSchedulingArea = feeder_area
-        Topology.expand_to_boundaries(head_terminal,xfmr_boundary=False)
+        expand_to_boundaries(head_terminal, feeder_area_model, feeder_area, cim,
+                           boundaries, parsed, contained_equipment, switch_classes,
+                           xfmr_boundary=False)
 
     # Build topology tree from slack bus to first switch
     for energy_source in feeder_model.graph.get(cim.EnergySource, {}).values():
         terminal = energy_source.Terminals[0]
-        Topology.expand_to_boundaries(terminal, xfmr_boundary=False)
+        expand_to_boundaries(terminal, feeder_area_model, feeder_area, cim,
+                           boundaries, parsed, contained_equipment, switch_classes,
+                           xfmr_boundary=False)
 
     # Add list of boundary terminals
-    feeder_area_model.boundaries = Topology.boundaries
-    
+    feeder_area_model.boundaries = boundaries
+
     return feeder_area_model

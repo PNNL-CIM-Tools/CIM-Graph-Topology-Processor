@@ -16,16 +16,25 @@ The project implements topology processing for GridAPPS-D, dividing power system
 
 ### Environment Setup
 ```bash
-# Install dependencies using Poetry
-poetry install
+# Install UV (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate
+uv pip install -e .
 
 # Install with GridAPPS-D integration (optional)
-poetry install -E gridappsd
+uv pip install -e ".[gridappsd]"
 
-# Activate virtual environment
-poetry shell
-# Or use existing venv
-source .venv/bin/activate
+# Install with dev dependencies
+uv pip install -e ".[dev]"
+
+# Install everything (GridAPPS-D + dev tools)
+uv pip install -e ".[gridappsd,dev]"
+
+# Alternative: Use uv sync for faster installation
+uv sync --extra gridappsd --extra dev
 ```
 
 ### Running the Service
