@@ -29,7 +29,8 @@ def process_base_topology(network: NodeBreakerModel, bus_mapper):
     for busbar in network.list_by_class(cim.BusbarSection):
         container = busbar.EquipmentContainer
         terminal = busbar.Terminals[0]
-        bus_marker = cim.BusNameMarker(name=busbar.name)
+        bus_number, bus_name = bus_mapper.get_bus_number_and_name(busbar)
+        bus_marker = cim.BusNameMarker(name=bus_number, aliasName=bus_name)
         bus_marker.Terminal = terminal
         terminal.BusNameMarker = bus_marker
 
@@ -80,7 +81,7 @@ def process_bus_topology(network, first_terminal:cim.Terminal, bus_mapper: BusNu
 
         bus_number, bus_name = bus_mapper.get_bus_number_and_name(busbar)
         setattr(topo_node, 'busNumber', bus_number)
-        setattr(topo_node, 'aliasName', bus_name)
+        setattr(topo_node, 'aliasName', bus_number)
 
 
         network.add_to_graph(topo_node)
@@ -93,10 +94,12 @@ def process_bus_topology(network, first_terminal:cim.Terminal, bus_mapper: BusNu
                 topo_node.Terminal.append(terminal)
                 equipment = terminal.ConductingEquipment
                 if isinstance(equipment,cim.Switch):
+
                     # if not equipment.open and not equipment.retained:
                     if not equipment.retained:
                         for next_terminal in equipment.Terminals:
                             if not next_terminal.__traversed__:
+
                                 next_terminal.TopologicalNode = topo_node
                                 next_terminal.ConnectivityNode.TopologicalNode = topo_node
                                 topo_node.Terminal.append(next_terminal)
