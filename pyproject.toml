@@ -1,27 +1,26 @@
-[tool.poetry]
+[project]
 name = "cim-topology"
-version = "v0.0.1a"
+version = "0.0.1a0"
 description = "Topology Processor based on CIM-Graph Library"
-authors = ["A. Anderson <19935503+AAndersn@users.noreply.github.com>"]
-packages = [
-    { include = "cimtopology" }
+authors = [
+    {name = "A. Anderson", email = "19935503+AAndersn@users.noreply.github.com"}
 ]
 readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "cim-graph>=0.4.3a0",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-#cim-builer = "^0.1.0a0"
-#cim-loader = "^0.1.0a0"
-cim-graph = "^0.1.5a0"
-
-[tool.poetry.extras]
+[project.optional-dependencies]
 gridappsd = ["gridappsd-python"]
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^2.17.0"
-ipykernel = "^6.25.1"
-
+dev = [
+    "pre-commit>=2.17.0",
+    "ipykernel>=6.25.1",
+]
 
 [build-system]
-requires = ["poetry-core>=1.2.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cimtopology"]

@@ -1,7 +1,9 @@
 import logging
 
 from cimgraph.models import FeederModel, DistributedArea
-from cimtopology.distribution.distributed_topology import DistributedTopology
+from cimtopology.distribution.distributed_topology import (
+    get_switch_classes, expand_to_boundaries
+)
 
 _log = logging.getLogger(__name__)
 
@@ -27,8 +29,7 @@ def create_switch_areas(feeder_model: FeederModel, feeder_area_model: Distribute
     feeder = feeder_model.graph[cim.Feeder][feeder_id]
     feeder_area = feeder_area_model.container
 
-    switch_classes = [cim.Breaker, cim.Sectionaliser,
-                cim.Recloser, cim.LoadBreakSwitch, cim.Switch]
+    switch_classes = get_switch_classes(cim)
     counter = -1
     for cim_class in switch_classes:
         # Loop through all switches in the model
@@ -45,17 +46,22 @@ def create_switch_areas(feeder_model: FeederModel, feeder_area_model: Distribute
                     switch_area.name = name
                     switch_area.FeederArea = feeder_area
                     feeder_model.add_to_graph(switch_area)
-                    
+
                     # Create CIM-Graph Distributed GraphModel class
                     switch_area_model = DistributedArea(connection = feeder_model.connection,
                                                 container = switch_area, distributed = True)
-                    
+
+                    # Initialize state for topology traversal
+                    boundaries = []
+                    parsed = []
+                    contained_equipment = []
+
                     # Load topology for current switch area and parse to next switch(es)
-                    Topology = DistributedTopology(switch_area_model)
-                    Topology.expand_to_boundaries(terminal)
-                    switch_area_model.boundaries = Topology.boundaries
+                    expand_to_boundaries(terminal, switch_area_model, switch_area, cim,
+                                       boundaries, parsed, contained_equipment, switch_classes)
+                    switch_area_model.boundaries = boundaries
                     feeder_area_model.distributed_areas.append(switch_area_model)
-                    
+
                     # Add transformers to the switch area
                     for transformer in switch_area_model.graph.get(cim.PowerTransformer, {}).values():
                         transformer.SubSchedulingArea = switch_area_model.container

@@ -96,7 +96,7 @@ class DistributedTopologyMessage():
                 del feeder_model
 
             new_sub = cim.Substation()
-            new_sub.uuid(mRID = substation.uri())
+            new_sub.uuid(uri = substation.uri())
             sub_model = DistributedArea(container=new_sub,
                                             connection=connection, distributed=False)
             sub_model.get_all_edges(cim.Substation)
@@ -105,10 +105,9 @@ class DistributedTopologyMessage():
             sub_msg['AddressableEquipment'] = utils.identify_addressable(sub_model)
             sub_msg['UnaddressableEquipment'] = utils.identify_unaddressable(sub_model)
             sub_msg['Measurements'] = utils.identify_measurements(sub_model)
-
-            
-            
             self.message['DistributionArea']['Substations'].append(sub_msg)
+            del sub_msg
+            del sub_model
 
 
 
