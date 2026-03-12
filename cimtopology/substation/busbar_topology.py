@@ -60,12 +60,17 @@ def process_busbar_topology(network:NodeBreakerModel, busbar:cim_profile.BusbarS
 
     process_bus_topology(network, first_terminal, bus_mapper, busbar)
                             
-def process_bus_topology(network, first_terminal:cim.Terminal, bus_mapper: BusNumberMapper, busbar: cim_profile.BusbarSection=None):
+def process_bus_topology(network, first_terminal:cim_profile.Terminal, bus_mapper: BusNumberMapper, busbar: cim_profile.BusbarSection=None):
     cim:cim_profile = importlib.import_module(first_terminal.__class__.__module__)
 
     node = first_terminal.ConnectivityNode
     topo_node = first_terminal.TopologicalNode
     container = node.ConnectivityNodeContainer
+    if first_terminal.BusNameMarker is None:
+        bus_number, bus_name = bus_mapper.get_bus_number_and_name(busbar)
+        bus_marker = cim.BusNameMarker(name=bus_number, aliasName=bus_name)
+        first_terminal.BusNameMarker = bus_marker
+        network.add_to_graph(bus_marker)
 
     if topo_node is None:
         topo_node = cim.TopologicalNode(name='topo_'+node.name)
@@ -74,6 +79,7 @@ def process_bus_topology(network, first_terminal:cim.Terminal, bus_mapper: BusNu
         topo_node.BaseVoltage = container.BaseVoltage
         topo_node.ControlArea = node.ControlArea
         first_terminal.TopologicalNode = topo_node
+        first_terminal.BusNameMarker = topo_node.BusNameMarker
         node.TopologicalNode = topo_node
         topo_node.Terminal.append(first_terminal)
         topo_node.ConnectivityNodes.append(first_terminal.ConnectivityNode)
@@ -91,6 +97,7 @@ def process_bus_topology(network, first_terminal:cim.Terminal, bus_mapper: BusNu
             if not terminal.__traversed__:
                 terminal.__traversed__ = True
                 terminal.TopologicalNode = topo_node
+                terminal.BusNameMarker = topo_node.BusNameMarker
                 topo_node.Terminal.append(terminal)
                 equipment = terminal.ConductingEquipment
                 if isinstance(equipment,cim.Switch):
@@ -101,6 +108,7 @@ def process_bus_topology(network, first_terminal:cim.Terminal, bus_mapper: BusNu
                             if not next_terminal.__traversed__:
 
                                 next_terminal.TopologicalNode = topo_node
+                                next_terminal.BusNameMarker = topo_node.BusNameMarker
                                 next_terminal.ConnectivityNode.TopologicalNode = topo_node
                                 topo_node.Terminal.append(next_terminal)
                                 topo_node.ConnectivityNodes.append(next_terminal.ConnectivityNode)
