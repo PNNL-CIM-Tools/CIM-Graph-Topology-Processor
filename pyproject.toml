@@ -1,6 +1,6 @@
 [project]
 name = "cim-topology"
-version = "0.0.1a0"
+version = "0.0.1"
 description = "Topology Processor based on CIM-Graph Library"
 authors = [
     {name = "A. Anderson", email = "19935503+AAndersn@users.noreply.github.com"}
