@@ -52,13 +52,30 @@ The service listens on `goss.gridappsd.request.data.cimtopology` and responds to
 Example request:
 
 ```python
+import os
+import json
+from gridappsd import GridAPPSD
+
+# Connect to GridAPPS-D
+os.environ['GRIDAPPSD_USER'] = 'app_user'
+os.environ['GRIDAPPSD_PASSWORD'] = '1234App'
+gapps = GridAPPSD()
+assert gapps.connected
+
+# Request distributed topology for a feeder or distribution area by mRID
+topic = "goss.gridappsd.request.data.cimtopology"
 message = {
     "requestType": "GET_DISTRIBUTED_AREAS",
-    "mRID": "<feeder-or-distribution-area-mRID>",
+    "mRID": "49AD8E07-3BF9-A4E2-CB8F-C3722F837B62",  # IEEE 13-node feeder mRID
     "resultFormat": "JSON"
 }
-response = gapps.get_response("goss.gridappsd.request.data.cimtopology", message, timeout=30)
+response = gapps.get_response(topic, message, timeout=30)
+
+# Response contains the hierarchical topology message
+print(json.dumps(response, indent=4))
 ```
+
+The `mRID` can be a `Feeder`, `FeederArea`, or `DistributionArea` mRID — the service detects the container type automatically.
 
 ### Standalone (no GridAPPS-D)
 
@@ -152,3 +169,17 @@ See [`examples/9500node_example.ipynb`](examples/9500node_example.ipynb) for a w
 ## License
 
 See [LICENSE](LICENSE).
+
+## Attribution and Disclaimer
+
+This software was created under a project sponsored by the U.S. Department of Energy’s Office of Electricity, an agency of the United States Government.  Neither the United States Government nor the United States Department of Energy, nor Battelle, nor any of their employees, nor any jurisdiction or organization that has cooperated in the development of these materials, makes any warranty, express or implied, or assumes any legal liability or responsibility for the accuracy, completeness, or usefulness or any information, apparatus, product, software, or process disclosed, or represents that its use would not infringe privately owned rights.
+
+Reference herein to any specific commercial product, process, or service by trade name, trademark, manufacturer, or otherwise does not necessarily constitute or imply its endorsement, recommendation, or favoring by the United States Government or any agency thereof, or Battelle Memorial Institute. The views and opinions of authors expressed herein do not necessarily state or reflect those of the United States Government or any agency thereof.
+
+PACIFIC NORTHWEST NATIONAL LABORATORY
+operated by
+BATTELLE
+for the
+UNITED STATES DEPARTMENT OF ENERGY
+under Contract DE-AC05-76RL01830
+
