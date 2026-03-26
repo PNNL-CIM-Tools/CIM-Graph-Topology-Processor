@@ -1,7 +1,0 @@
-{
-    "terminal.integrated.env.linux": {
-    "ANTHROPIC_AUTH_TOKEN": "sk-0GnJ2ZPJNDRp0-xrIB5MjQ",
-    "ANTHROPIC_BASE_URL": "https://ai-incubator-api.pnnl.gov",
-    "ANTHROPIC_MODEL": "claude-sonnet-4-5-20250929-v1-project"
-  }
-}
