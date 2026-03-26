@@ -1,9 +1,0 @@
-topic = "goss.gridappsd.request.data.cimtopology"
-
-message = {
-   "requestType": "GET_DISTRIBUTED_TOPOLOGY",
-   "mRID":  "49AD8E07-3BF9-A4E2-CB8F-C3722F837B62",
-   "resultFormat": "JSON"
-}
-
-message = gapps.get_response(topic, message, timeout=30)
