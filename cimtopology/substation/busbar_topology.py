@@ -4,6 +4,7 @@ import importlib
 import logging
 from cimgraph.models import NodeBreakerModel
 from cimtopology.substation.bus_number_mapper import BusNumberMapper
+from cimtopology.core import node_of
 
 _log = logging.getLogger(__name__)
 
@@ -55,8 +56,32 @@ def process_topology(network: NodeBreakerModel, bus_mapper: BusNumberMapper) -> 
                     bus_mapper=bus_mapper, busbar=junction,
                 )
 
+    floating = _report_floating_nodes(network)
+
     topo_count = len(network.list_by_class(cim.TopologicalNode))
-    _log.info(f"Topology complete: {topo_count} TopologicalNodes")
+    _log.info(f"Topology complete: {topo_count} TopologicalNodes, "
+              f"{len(floating)} floating ConnectivityNodes")
+
+
+def _report_floating_nodes(network: NodeBreakerModel) -> list:
+    """Return ConnectivityNodes with no TopologicalNode, warning about each.
+
+    A floating node means some connectivity was never reached, which downstream
+    exports render as an unnumbered node. Report it loudly rather than letting it
+    pass silently as it has in the past.
+    """
+    cim = network.cim
+
+    floating = [node for node in network.list_by_class(cim.ConnectivityNode)
+                if node.TopologicalNode is None]
+
+    for node in floating:
+        equipment = sorted({type(term.ConductingEquipment).__name__
+                            for term in node.Terminals})
+        _log.warning(f"Floating ConnectivityNode '{node.name}' "
+                     f"was not assigned a TopologicalNode (connects: {', '.join(equipment)})")
+
+    return floating
 
 
 def _find_junction(connectivity_node):
@@ -65,6 +90,27 @@ def _find_junction(connectivity_node):
         if type(term.ConductingEquipment).__name__ == 'Junction':
             return term.ConductingEquipment
     return None
+
+
+def _assign_terminal(terminal, topo_node, bus_marker) -> None:
+    """Assign a Terminal to a TopologicalNode, linking both sides.
+
+    The ConnectivityNode back-references are as important as the Terminal ones:
+    exports and renderers read ConnectivityNode.TopologicalNode, so a node whose
+    terminals are all assigned but whose CN is not still shows up as a floating,
+    unnumbered node. Every assignment goes through here so the two stay in sync.
+    """
+    terminal.TopologicalNode = topo_node
+    terminal.BusNameMarker = bus_marker
+    terminal.__traversed__ = True
+    if terminal not in topo_node.Terminal:
+        topo_node.Terminal.append(terminal)
+
+    node = terminal.ConnectivityNode
+    if node is not None:
+        node.TopologicalNode = topo_node
+        if node not in topo_node.ConnectivityNodes:
+            topo_node.ConnectivityNodes.append(node)
 
 
 def _assign_isolated_shunts(network: NodeBreakerModel) -> None:
@@ -82,7 +128,7 @@ def _assign_isolated_shunts(network: NodeBreakerModel) -> None:
     shunt_types = _shunt_types(cim)
 
     for terminal in network.list_by_class(cim.Terminal):
-        if terminal.TopologicalNode is not None:
+        if node_of(terminal) is not None:
             continue
         equipment = terminal.ConductingEquipment
         if not isinstance(equipment, shunt_types):
@@ -99,20 +145,12 @@ def _assign_isolated_shunts(network: NodeBreakerModel) -> None:
         topo_node, bus_marker = upstream
 
         # Assign the shunt terminal to the upstream bus
-        terminal.TopologicalNode = topo_node
-        terminal.BusNameMarker = bus_marker
-        if terminal not in topo_node.Terminal:
-            topo_node.Terminal.append(terminal)
-        terminal.__traversed__ = True
+        _assign_terminal(terminal, topo_node, bus_marker)
 
         # Also assign the switch terminal on the shunt side
         for cn_terminal in terminal.ConnectivityNode.Terminals:
             if cn_terminal.TopologicalNode is None:
-                cn_terminal.TopologicalNode = topo_node
-                cn_terminal.BusNameMarker = bus_marker
-                if cn_terminal not in topo_node.Terminal:
-                    topo_node.Terminal.append(cn_terminal)
-                cn_terminal.__traversed__ = True
+                _assign_terminal(cn_terminal, topo_node, bus_marker)
 
         equipment.inService = False
         _log.info(f"Shunt '{equipment.name}' assigned to bus "
@@ -133,8 +171,9 @@ def _trace_to_upstream_bus(start_cn, cim) -> tuple | None:
 
         # Check if any terminal on this CN already has a TopologicalNode
         for term in cn.Terminals:
-            if term.TopologicalNode is not None:
-                return (term.TopologicalNode, term.BusNameMarker)
+            existing = node_of(term)
+            if existing is not None:
+                return (existing, term.BusNameMarker)
 
         # Try crossing switches connected to this CN
         for term in cn.Terminals:
@@ -154,14 +193,36 @@ def _trace_to_upstream_bus(start_cn, cim) -> tuple | None:
 
 
 def clean_topology(network: NodeBreakerModel) -> None:
+    """Purge all existing topology so processing always rebuilds from switch states.
+
+    Without this, a model that already carries topology (a CIM file exported from a
+    previous run, for example) short-circuits every ``if ... is None`` branch in the
+    traversal: the processor returns the same node count it was handed and never
+    reflects the current switch states. Deleting the derived objects first makes
+    processing deterministic and idempotent.
+    """
     cim = network.cim
 
     for terminal in network.list_by_class(cim.Terminal):
+        terminal.TopologicalNode = None
+        terminal.BusNameMarker = None
         terminal.__traversed__ = False
         terminal.__is_boundary__ = False
 
+    for node in network.list_by_class(cim.ConnectivityNode):
+        node.TopologicalNode = None
+
     for voltage_level in network.list_by_class(cim.VoltageLevel):
         voltage_level.__bus_count__ = 0
+
+    # Drop the derived objects themselves, not just the links to them
+    stale = (network.list_by_class(cim.TopologicalNode)
+             + network.list_by_class(cim.BusNameMarker)
+             + network.list_by_class(cim.TopologicalIsland))
+    for obj in stale:
+        network.graph[type(obj)].pop(obj.identifier, None)
+
+    _log.info(f"Cleared {len(stale)} pre-existing topology objects")
 
 
 def process_base_topology(network: NodeBreakerModel, bus_mapper):
@@ -195,7 +256,7 @@ def process_busbar_topology(network: NodeBreakerModel, busbar, bus_mapper: BusNu
     first_terminal = busbar.Terminals[0]
 
     node = first_terminal.ConnectivityNode
-    topo_node = first_terminal.TopologicalNode
+    topo_node = node_of(first_terminal)
     container = node.ConnectivityNodeContainer
 
     process_bus_topology(network, first_terminal, bus_mapper, busbar)
@@ -205,7 +266,7 @@ def process_bus_topology(network, first_terminal, bus_mapper: BusNumberMapper, b
     cim = importlib.import_module(first_terminal.__class__.__module__)
 
     node = first_terminal.ConnectivityNode
-    topo_node = first_terminal.TopologicalNode
+    topo_node = node_of(first_terminal)
     container = node.ConnectivityNodeContainer
     bus_marker = first_terminal.BusNameMarker
     if bus_marker is None:
@@ -220,35 +281,25 @@ def process_bus_topology(network, first_terminal, bus_mapper: BusNumberMapper, b
         topo_node.ConnectivityNodeContainer = container
         topo_node.BusNameMarker.append(bus_marker)
         topo_node.BaseVoltage = container.BaseVoltage
-        first_terminal.TopologicalNode = topo_node
-        first_terminal.BusNameMarker = bus_marker
-        node.TopologicalNode = topo_node
-        topo_node.Terminal.append(first_terminal)
-        topo_node.ConnectivityNodes.append(first_terminal.ConnectivityNode)
         bus_marker.TopologicalNode = topo_node
 
         # Use the bus number already assigned to the BusNameMarker
         topo_node.aliasName = bus_marker.name
 
+        _assign_terminal(first_terminal, topo_node, bus_marker)
+
         network.add_to_graph(topo_node)
 
     for terminal in node.Terminals:
         if not terminal.__traversed__:
-            terminal.__traversed__ = True
-            terminal.TopologicalNode = topo_node
-            terminal.BusNameMarker = bus_marker
-            topo_node.Terminal.append(terminal)
+            _assign_terminal(terminal, topo_node, bus_marker)
             equipment = terminal.ConductingEquipment
             if isinstance(equipment, cim.Switch):
                 if not equipment.retained:
                     if not equipment.open:
                         for next_terminal in equipment.Terminals:
                             if not next_terminal.__traversed__:
-                                next_terminal.TopologicalNode = topo_node
-                                next_terminal.BusNameMarker = bus_marker
-                                next_terminal.ConnectivityNode.TopologicalNode = topo_node
-                                topo_node.Terminal.append(next_terminal)
-                                topo_node.ConnectivityNodes.append(next_terminal.ConnectivityNode)
+                                _assign_terminal(next_terminal, topo_node, bus_marker)
                                 process_bus_topology(network, next_terminal, bus_mapper=bus_mapper, busbar=busbar)
 
 

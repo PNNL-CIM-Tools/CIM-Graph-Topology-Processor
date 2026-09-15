@@ -2,7 +2,7 @@ import logging
 from uuid import UUID
 from cimgraph.models import FeederModel, DistributedArea
 from cimtopology.distribution.distributed_topology import (
-    get_switch_classes, expand_to_boundaries
+    get_switch_classes, expand_to_boundaries, assign_to_area, mark_boundary, nest_area
 )
 
 _log = logging.getLogger(__name__)
@@ -27,20 +27,16 @@ def create_feeder_area(feeder_model: FeederModel) -> DistributedArea:
     feeder = feeder_model.graph[cim.Feeder][feeder_id]
     substation = feeder.NormalEnergizingSubstation
     geo_region = substation.Region
-    # Create FeederArea container object
-    feeder_area = cim.FeederArea()
+    # cimhub_2026 replaced the FeederArea/DistributionArea/SwitchArea/SecondaryArea
+    # classes with one ConnectivityArea discriminated by `areaType`, nested through
+    # ContainedWithin/ContainedAreas rather than a class-specific association each.
+    feeder_area = cim.ConnectivityArea(areaType = cim.ConnectivityAreaKind.feederArea)
     feeder_area.uuid(name = feeder.mRID)
-    distribution_area = cim.DistributionArea()
+    distribution_area = cim.ConnectivityArea(
+        areaType = cim.ConnectivityAreaKind.distributionArea)
     distribution_area.uuid(name = geo_region.mRID)
 
-    feeder_area.Feeder = feeder
-    feeder_area.Substation = feeder.NormalEnergizingSubstation
-    feeder_area.DistributionArea = distribution_area
-
-    feeder.FeederArea = feeder_area
-    feeder.DistributionArea = distribution_area
-    
-    substation.SchedulingArea = distribution_area
+    nest_area(feeder_area, distribution_area)
 
     feeder_model.add_to_graph(feeder_area)
     feeder_model.add_to_graph(distribution_area)
@@ -60,12 +56,12 @@ def create_feeder_area(feeder_model: FeederModel) -> DistributedArea:
     # Add all switches to FeederArea
     for cim_class in switch_classes:
         for switch in feeder_model.graph.get(cim_class, {}).values():
-            switch.SubSchedulingArea = feeder_area
+            assign_to_area(switch, feeder_area)
             feeder_area_model.add_to_graph(switch)
 
     # Build topology tree from head terminal to first switch
     for head_terminal in feeder.NormalHeadTerminal:
-        head_terminal.SubSchedulingArea = feeder_area
+        mark_boundary(head_terminal, feeder_area)
         expand_to_boundaries(head_terminal, feeder_area_model, feeder_area, cim,
                            boundaries, parsed, contained_equipment, switch_classes,
                            xfmr_boundary=False)

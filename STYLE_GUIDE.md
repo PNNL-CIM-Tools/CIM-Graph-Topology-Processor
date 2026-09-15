@@ -13,25 +13,8 @@
 - Default to the simplest solution that satisfies the requirements.
 - Do not introduce abstractions or patterns unless they clearly simplify the codebase.
 
----
 
-## 2. Be Ruthlessly DRY (But Not Dogmatic)
-
-**Don’t Repeat Yourself**, especially for logic and behavior.
-
-- Extract shared logic into well-named functions or modules.
-- Avoid copy-pasting the same behavior across files or components.
-- However, don’t create convoluted abstractions just to deduplicate a few similar lines.
-
-**Agent behavior:**
-
-- Look for repeated logic; encapsulate it in reusable functions.
-- Prefer small, meaningful helper functions over generic “doEverythingUtil” helpers.
-- It’s okay to repeat a tiny bit of code if abstraction would obscure intent.
-
----
-
-## 3. Avoid Over-Abstraction
+## 2. Avoid Over-Abstraction
 
 Abstractions must **earn their keep**.
 
@@ -47,7 +30,7 @@ Abstractions must **earn their keep**.
 
 ---
 
-## 4. Avoid Over-Engineering
+## 3. Avoid Over-Engineering
 
 Design for **today’s real requirements**, not every hypothetical tomorrow.
 
@@ -62,7 +45,7 @@ Design for **today’s real requirements**, not every hypothetical tomorrow.
 
 ---
 
-## 5. Fail Fast, Don’t “Fallback Forever”
+## 4. Fail Fast, Don’t “Fallback Forever”
 
 Too many fallbacks signal **low confidence** in the design.
 
@@ -77,7 +60,7 @@ Too many fallbacks signal **low confidence** in the design.
 
 ---
 
-## 6. No Blanket Try/Catch as a Safety Blanket
+## 5. No Blanket Try/Catch as a Safety Blanket
 
 Defensive coding is good; paranoia everywhere is not.
 
@@ -95,7 +78,7 @@ Defensive coding is good; paranoia everywhere is not.
 
 ---
 
-## 7. Prefer Functional, Side-Effect-Minimal Code
+## 6. Prefer Functional, Side-Effect-Minimal Code
 
 Predictable code is easier to test and reason about.
 
@@ -111,7 +94,7 @@ Predictable code is easier to test and reason about.
 
 ---
 
-## 8. Optimize for Human Readability Over Cleverness
+## 7. Optimize for Human Readability Over Cleverness
 
 Code is read far more than it’s written.
 
@@ -127,7 +110,7 @@ Code is read far more than it’s written.
 
 ---
 
-## 9. Keep Modules Small, Cohesive, and Well-Bounded
+## 8. Keep Modules Small, Cohesive, and Well-Bounded
 
 Good structure reduces complexity.
 
@@ -143,7 +126,7 @@ Good structure reduces complexity.
 
 ---
 
-## 10. Build for Maintainability: Tests, Logs, and Contracts
+## 9. Build for Maintainability: Tests, Logs, and Contracts
 
 Confidence comes from **design + verification**, not from piles of fallback logic.
 

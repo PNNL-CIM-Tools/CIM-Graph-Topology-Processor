@@ -2,7 +2,7 @@ import logging
 
 from cimgraph.models import FeederModel, DistributedArea
 from cimtopology.distribution.distributed_topology import (
-    get_switch_classes, expand_to_boundaries
+    get_switch_classes, expand_to_boundaries, assign_to_area, nest_area
 )
 
 _log = logging.getLogger(__name__)
@@ -37,14 +37,15 @@ def create_switch_areas(feeder_model: FeederModel, feeder_area_model: Distribute
             # Loop through both terminals of the switch
             for terminal in switch.Terminals:
                 # If terminal has an associated SwitchArea, then we already parsed it
-                if terminal.BoundedSchedulingArea is None:
+                if terminal.BoundedConnectivityArea is None:
                     # Create a SwitchArea container following the naming convention of GridAPPS-D python
                     counter += 1
                     name = f'{feeder.mRID}.{counter}'
-                    switch_area = cim.SwitchArea()
+                    switch_area = cim.ConnectivityArea(
+                        areaType = cim.ConnectivityAreaKind.switchArea)
                     switch_area.uuid(name = name)
                     switch_area.name = name
-                    switch_area.FeederArea = feeder_area
+                    nest_area(switch_area, feeder_area)
                     feeder_model.add_to_graph(switch_area)
 
                     # Create CIM-Graph Distributed GraphModel class
@@ -64,7 +65,7 @@ def create_switch_areas(feeder_model: FeederModel, feeder_area_model: Distribute
 
                     # Add transformers to the switch area
                     for transformer in switch_area_model.graph.get(cim.PowerTransformer, {}).values():
-                        transformer.SubSchedulingArea = switch_area_model.container
+                        assign_to_area(transformer, switch_area_model.container)
                         switch_area_model.add_to_graph(transformer)
 
     return feeder_area_model.distributed_areas

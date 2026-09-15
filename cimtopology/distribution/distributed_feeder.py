@@ -6,7 +6,6 @@ from cimtopology.distribution.feeder_area import create_feeder_area
 from cimtopology.distribution.switch_area import create_switch_areas
 from cimtopology.distribution.secondary_area import create_secondary_areas
 import cimgraph.utils as utils
-import cimgraph.data_profile.cimhub_2023 as cim #TODO: Better typing
 
 _log = logging.getLogger(__name__)
 
