@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 from cimgraph.models import FeederModel, DistributedArea
-from cimtopology.distribution.distributed_topology import (
+from cimtopology.distribution.archive.distributed_topology import (
     get_switch_classes, expand_to_boundaries
 )
 

@@ -1,5 +1,5 @@
-from cimtopology.substation.bus_number_mapper import BusNumberMapper
-from cimtopology.substation.busbar_topology import (
+from cimtopology.substation.archive.bus_number_mapper import BusNumberMapper
+from cimtopology.substation.archive.busbar_topology import (
     clean_topology,
     process_topology,
     process_base_topology,

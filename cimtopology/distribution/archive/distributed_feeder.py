@@ -2,9 +2,9 @@ import logging
 
 from cimgraph.databases import ConnectionInterface
 from cimgraph.models import FeederModel, DistributedArea
-from cimtopology.distribution.feeder_area import create_feeder_area
-from cimtopology.distribution.switch_area import create_switch_areas
-from cimtopology.distribution.secondary_area import create_secondary_areas
+from cimtopology.distribution.archive.feeder_area import create_feeder_area
+from cimtopology.distribution.archive.switch_area import create_switch_areas
+from cimtopology.distribution.archive.secondary_area import create_secondary_areas
 import cimgraph.utils as utils
 import cimgraph.data_profile.cimhub_2023 as cim #TODO: Better typing
 
