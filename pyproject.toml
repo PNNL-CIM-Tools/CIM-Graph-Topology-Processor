@@ -8,7 +8,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "cim-graph>=0.4.3a0",
+    # pre-1.0: pin below the next minor
+    "cim-graph>=0.6.0a0,<0.7",
+    "cimprofiles>=0.1.0a4,<0.2",
 ]
 
 [project.optional-dependencies]
@@ -16,7 +18,23 @@ gridappsd = ["gridappsd-python"]
 dev = [
     "pre-commit>=2.17.0",
     "ipykernel>=6.25.1",
+    "pytest>=8.3.5",
+    # builds the cim18v17 test fixtures from CIMTBL-Models .cimtbl files
+    "cimtables>=0.1.0a1",
 ]
+
+[tool.uv]
+# cim-graph and its deps (gridappsd-python) are pre-release builds
+prerelease = "allow"
+
+# Local development against sibling checkouts.
+[tool.uv.sources]
+cim-graph = { path = "../CIM-Graph", editable = true }
+cimprofiles = { path = "../CIM-Profiles", editable = true }
+cimtables = { path = "../CIM-Tables", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
 
 [build-system]
 requires = ["hatchling"]

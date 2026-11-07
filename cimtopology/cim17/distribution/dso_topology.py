@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 
 from cimgraph.models import FeederModel
-import cimgraph.data_profile.cim18gmdm.canonical as cim
+import cimprofiles.cim18.cim18gmdm.canonical as cim
 
 _log = logging.getLogger(__name__)
 

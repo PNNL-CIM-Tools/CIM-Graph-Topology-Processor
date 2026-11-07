@@ -1,5 +1,5 @@
 import logging
-import cimgraph.data_profile.cimhub_2023 as cim
+import cimprofiles.cim17.cimhub_2023 as cim
 
 _log = logging.getLogger(__name__)
 

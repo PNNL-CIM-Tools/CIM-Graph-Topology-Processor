@@ -1,7 +1,7 @@
 import json
 from cimgraph.models import DistributedArea
 from uuid import UUID
-# import cimgraph.data_profile.cimhub_2023 as cim
+# import cimprofiles.cim17.cimhub_2023 as cim
 
 jsonld = dict["@id":str(UUID),"@type":str(type)]
 

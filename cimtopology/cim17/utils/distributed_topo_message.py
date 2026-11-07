@@ -3,8 +3,8 @@ import logging
 
 from cimgraph.databases import ConnectionInterface
 from cimgraph.models import FeederModel, DistributedArea
-import cimgraph.data_profile.cimhub_2023 as cim
-import cimtopology.utils as utils
+import cimprofiles.cim17.cimhub_2023 as cim
+import cimtopology.cim17.utils as utils
 import cimgraph.utils as cgutils
 
 _log = logging.getLogger(__name__)

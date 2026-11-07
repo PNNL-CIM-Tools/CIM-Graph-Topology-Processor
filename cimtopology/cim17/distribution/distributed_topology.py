@@ -1,7 +1,7 @@
 import logging
 
 from cimgraph.models import DistributedArea
-import cimgraph.data_profile.cimhub_ufls as cim #TODO: cleaner typing
+import cimprofiles.cim17.cimhub_2023 as cim #TODO: cleaner typing
 
 _log = logging.getLogger(__name__)
 
@@ -18,6 +18,19 @@ def get_switch_classes(cim):
     """
     return [cim.Breaker, cim.Sectionaliser, cim.Recloser,
             cim.LoadBreakSwitch, cim.Switch]
+
+
+def _voltage_set(voltages: list) -> set:
+    """
+    The distinct winding voltages, as floats in volts.
+
+    cim-graph 0.6 compatibility only: ``ratedU`` is now a ``CIMUnit`` ``Voltage`` object, which
+    must be converted with ``float()`` before it can be compared or put in a set.
+    ``None`` is kept as-is on purpose, so an unrated transformer still reads as
+    "all windings equal" (a regulator) exactly as it did before. That is a known
+    defect (see the tpoletop case), pinned by test/cim17 and fixed in cim18, not here.
+    """
+    return {None if voltage is None else float(voltage) for voltage in voltages}
 
 
 def check_boundary(equipment: cim.ConductingEquipment, cim, switch_classes: list,
@@ -51,7 +64,7 @@ def check_boundary(equipment: cim.ConductingEquipment, cim, switch_classes: list
                 for end in equipment.PowerTransformerEnd:
                     voltages.append(end.ratedU)
                     found_voltages = True
-                if len(set(voltages)) == 1:
+                if len(_voltage_set(voltages)) == 1:
                     is_boundary = False
             # If that logic did not work, then loop through the Tanks
             if equipment.TransformerTanks is not None and not found_voltages:
@@ -62,17 +75,18 @@ def check_boundary(equipment: cim.ConductingEquipment, cim, switch_classes: list
                             for end in tank.TransformerTankInfo.TransformerEndInfos:
                                 voltages.append(end.ratedU)
                                 found_voltages = True
-                            if len(set(voltages)) == 1:
+                            if len(_voltage_set(voltages)) == 1:
                                 is_boundary = False
                     # Older profiles do not have TransformeTankInfo attribute and link through Asset class
-                    if tank.Assets is not None and not found_voltages:
+                    # (getattr: cimprofiles' cimhub_2023 dropped TransformerTank.Assets; cim17v40 keeps it)
+                    if getattr(tank, 'Assets', None) is not None and not found_voltages:
                         for asset in tank.Assets:
                             if asset.AssetInfo is not None:
                                 # If voltage rating of both windings are the same, not a boundary
                                 for end in asset.AssetInfo.TransformerEndInfos:
                                     voltages.append(end.ratedU)
                                     found_voltages = True
-                                if len(set(voltages)) == 1:
+                                if len(_voltage_set(voltages)) == 1:
                                     is_boundary = False
 
     return is_boundary

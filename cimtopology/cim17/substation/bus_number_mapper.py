@@ -25,7 +25,7 @@ import logging
 import re
 from typing import Dict, Tuple
 from cimgraph.models import NodeBreakerModel
-import cimgraph.data_profile.cim17v40 as cim
+import cimprofiles.cim17.cim17v40 as cim
 
 _log = logging.getLogger(__name__)
 

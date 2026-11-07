@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import importlib
 import logging
-import cimgraph.data_profile.cimhub_2023 as cim_profile
+import cimprofiles.cim17.cimhub_2023 as cim_profile
 from cimgraph.models import NodeBreakerModel
 from cimgraph.databases import get_cim_profile
-from cimtopology.substation.archive.bus_number_mapper import BusNumberMapper
+from cimtopology.cim17.substation.bus_number_mapper import BusNumberMapper
 
 
 def process_island_topology(network, busbar:cim_profile.BusbarSection, bus_mapper:BusNumberMapper):

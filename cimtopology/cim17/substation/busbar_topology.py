@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import logging
 from cimgraph.models import NodeBreakerModel
-from cimtopology.substation.archive.bus_number_mapper import BusNumberMapper
+from cimtopology.cim17.substation.bus_number_mapper import BusNumberMapper
 
 _log = logging.getLogger(__name__)
 
