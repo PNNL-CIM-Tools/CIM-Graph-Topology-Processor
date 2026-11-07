@@ -272,4 +272,30 @@ class IGraph:
         return order
 
 
-ALL = [LinkNet, Adjacency, NetworkX, SciPy, RustworkX, IGraph]
+class CoreLinkNet:
+    """``cimtopology.core.linknet``: the processor's own structure, names and all."""
+    name = 'cimtopology.core'
+
+    def __init__(self, n_buses: int, u: list[int], v: list[int]):
+        from cimtopology.core.linknet import LinkNet as Structure, spanning_forest
+        self.spanning_forest = spanning_forest
+        self.linknet = Structure()
+        for bus in range(n_buses):
+            self.linknet.add_node(str(bus))
+        for edge, (bus1, bus2) in enumerate(zip(u, v)):
+            self.linknet.add_equipment(str(edge), [str(bus1), str(bus2)])
+
+    def components(self, usable: list[bool]) -> list[int]:
+        forest = self.spanning_forest(self.linknet, range(1, self.linknet.node_count + 1),
+                                      crosses=lambda equipment: usable[equipment - 1])
+        return forest.tree_of[1:]
+
+    def spanning(self, roots: list[int], usable: list[bool]) -> list[tuple[int, int]]:
+        forest = self.spanning_forest(self.linknet, [root + 1 for root in roots], depth_first=True,
+                                      crosses=lambda equipment: usable[equipment - 1])
+        links = set(forest.links)
+        return [(self.linknet.terminal_equipment[t] - 1, self.linknet.terminal_node[t] - 1)
+                for t in forest.order if t not in links]
+
+
+ALL = [CoreLinkNet, LinkNet, Adjacency, NetworkX, SciPy, RustworkX, IGraph]

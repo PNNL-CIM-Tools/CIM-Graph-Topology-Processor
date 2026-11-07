@@ -19,18 +19,19 @@ Duquesne (largest):
 
 | backend | build | islands | zones | sort+orient | per update |
 |---|---|---|---|---|---|
-| linknet (pure Python) | 49 | 85 | 96 | 80 | 100 |
+| **cimtopology.core** (named LinkNet, papers' structure) | 354 | 214 | 212 | 189 | 226 |
+| linknet (bare benchmark arrays) | 49 | 85 | 96 | 80 | 100 |
 | adjacency + union-find (pure Python) | 169 | 78 | 79 | 76 | 95 |
 | networkx | 704 | 769 | 751 | 989 | 903 |
 | scipy.csgraph | 4 | 9 | 9 | 238 | 10 |
 | rustworkx | (lazy) | 51 | 46 | 56 | 76 |
 | igraph | 17 | 20 | 21 | 300 | 21 |
 
-Secondary network (meshed): linknet 6 / 6 / 6 / 13 / 7; networkx 104 / 134 / 116 / 139 / 123.
+Secondary network (meshed): cimtopology.core 57 / 30 / 29 / 35 / 37; linknet 6 / 6 / 6 / 13 / 7; networkx 104 / 134 / 116 / 139 / 123.
 The rustworkx and networkx adapters rebuild the graph for each edge mask, so their operation times
 include a build.
 
-All six backends give identical island and zone partitions and forest sizes on all four networks.
+All seven backends give identical island and zone partitions and forest sizes on all four networks.
 
 ## Findings beyond speed
 
@@ -53,3 +54,7 @@ All six backends give identical island and zone partitions and forest sizes on a
 Pure Python is about 0.1 s on a 128k-bus network, so a compiled dependency is not needed for speed.
 networkx is about 10x slower than pure Python at every operation. scipy is fastest for components but
 collapses parallel edges and is slow for the ordered walk.
+
+`cimtopology.core.linknet` costs about 3x the bare arrays: name dictionaries, the per-equipment
+terminal table, the `crosses` callback, and whole-device expansion of multi-terminal equipment. It is
+still 2-4x faster than networkx and well under the 4.5 s it takes just to read the Duquesne file.
