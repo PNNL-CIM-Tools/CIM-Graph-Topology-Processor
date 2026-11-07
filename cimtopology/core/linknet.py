@@ -159,6 +159,8 @@ class SpanningForest:
     order: list[int] = field(default_factory=list)
     """Terminal of every branch crossed, in the order the walk emits it (see ``spanning_forest``).
     Its node is the upstream end."""
+    boundaries: list[int] = field(default_factory=list)
+    """Terminals where the walk stopped: on a node it expanded, of equipment ``crosses`` refused."""
 
     def reached(self) -> list[int]:
         """Every node some tree reached."""
@@ -219,7 +221,9 @@ def spanning_forest(linknet: LinkNet, roots: Iterable[int], *,
                 equipment = terminal_equipment[terminal]
                 if not labelled[equipment]:
                     far_nodes = _far_nodes(linknet, terminal, equipment, bus_members)
-                    if far_nodes and (crosses is None or crosses(equipment)):
+                    if far_nodes and crosses is not None and not crosses(equipment):
+                        forest.boundaries.append(terminal)
+                    elif far_nodes:
                         labelled[equipment] = 1
                         new = [node for node in far_nodes if tree_of[node] == NULL]
                         if len(new) < len(far_nodes):
