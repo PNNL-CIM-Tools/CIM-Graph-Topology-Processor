@@ -1,10 +1,8 @@
 import os
 import json
 import time
-import logging
 from gridappsd import GridAPPSD
-from gridappsd.topics import service_input_topic, service_output_topic
-from cimgraph.databases import ConnectionParameters, BlazegraphConnection
+from cimgraph.databases import BlazegraphConnection
 
 from cimtopology.cim17.utils import DistributedTopologyMessage
 import cimprofiles.cim17.cimhub_2023 as cim

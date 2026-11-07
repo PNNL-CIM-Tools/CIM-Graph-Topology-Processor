@@ -1,170 +1,110 @@
 # CIM-Topology-Processor
 
-A Transmission+Distribution topology processor built on the [CIM-Graph](https://github.com/PNNL-CIM-Tools/CIM-Graph) library. Processes Common Information Model (CIM) power system data to produce hierarchical distributed topology representations for grid simulation and analysis.
+The topology processor shared by the CIM tool chain (CIMHub, CIM-Repair, GridAPPS-D). Everything
+that involves spanning trees or topology processing lives here behind one API: sorting and orienting a
+network, islands, voltage zones and base voltages, connectivity gaps, and the distributed areas of a
+feeder.
 
-Designed for use with [GridAPPS-D](https://gridappsd.readthedocs.io/), dividing networks into schedulable areas:
+The core is a pure-Python LinkNet structure, from the two papers in [`references/`](references):
 
-- **Distribution Areas** — Top-level geographic regions
-- **Feeder Areas** — Substation head terminal to first switch
-- **Switch Areas** — Regions bounded by normally-open switches
-- **Secondary Areas** — Low-voltage regions bounded by distribution transformers
+- R. Podmore, *LINKNET: a structure for computer representation and solution of electric power
+  networks*, 1971.
+- A. Anderson and R. Podmore, *IEEE Access*, 2022: LinkNet over CIM ConnectivityNodes and Terminals.
+
+[`benchmarks/RESULTS.md`](benchmarks/RESULTS.md) compares it with networkx, scipy, rustworkx and
+igraph on networks up to 128k buses.
+
+## Status
+
+The repo is being rewritten for the CIM17 -> CIM18 change in distribution topology.
+
+| Package | Status |
+|---|---|
+| `cimtopology.core` | Model-agnostic LinkNet core and shared API. Tested. |
+| `cimtopology.cim18` | Planned: the `cim18v17` reader onto the core, then `ConnectedArea` construction. |
+| `cimtopology.cim17` | Frozen pre-CIM18 code (`cimhub_2023` / `cim17v40`), kept as the behavioral reference. |
 
 ## Installation
 
-Requires Python 3.10+. Install with [uv](https://github.com/astral-sh/uv) (recommended) or pip.
+Requires Python 3.10+ and [uv](https://github.com/astral-sh/uv).
 
 ```bash
-# Base install
-uv pip install -e .
-
-# With GridAPPS-D integration
-uv pip install -e ".[gridappsd]"
-
-# With dev tools (Jupyter, pre-commit)
-uv pip install -e ".[dev]"
-
-# Everything
-uv pip install -e ".[gridappsd,dev]"
+uv sync --extra dev                 # cim-graph, cimprofiles and cimtables from sibling checkouts
+uv sync --extra dev --extra gridappsd   # plus the GridAPPS-D service
+.venv/bin/python -m pytest test
 ```
 
-Dependencies:
-- `cim-graph >= 0.4.3a0`
-- `gridappsd-python` (optional, for GridAPPS-D service mode)
+`[tool.uv.sources]` in `pyproject.toml` points `cim-graph`, `cimprofiles` and `cimtables` at
+`../CIM-Graph`, `../CIM-Profiles` and `../CIM-Tables`.
 
 ## Usage
 
-### As a GridAPPS-D background service
+### The core: no CIM model needed
 
-Register the service using `topology_background_service.config`, then start it:
+A format converter (a `cimhub_{tool}` package for DSS, CYME SXST, ...) describes its network and
+asks for the topology. This runs before any CIM model exists, so every bus can get the right
+BaseVoltage, and the gaps can go to CIM-Repair.
+
+```python
+from cimtopology.core import (Branch, Coil, Connection, Network, Source, System, Topology, Transformer,
+                              walk, write_sorted_csv)
+
+network = Network(
+    sources=(Source('src', 12.47, System.THREE_PHASE),),
+    branches=(Branch('l1', 'a', 'src'), Branch('sw1', 'a', 'b', switch=True, open=True)),
+    transformers=(Transformer('xf1', (Coil('a', 12.47, Connection.POLYPHASE, frozenset({1, 2, 3})),
+                                      Coil('lv', 0.48, Connection.POLYPHASE, frozenset({1, 2, 3})))),),
+)
+topology = Topology(network)
+topology.islands()          # bus -> root bus, through closed equipment
+topology.voltage_zones()    # bus -> root bus, without crossing a transformer
+topology.gaps()             # isolated nodes, isolated sources, unenergized islands
+write_sorted_csv(topology.sort(), 'sorted.csv')   # each branch once, oriented from the source
+walk(network)['lv']         # BusSystem(0.48, THREE_PHASE); its .base_voltage is 'bv_480v'
+```
+
+### GridAPPS-D background service (CIM17)
+
+`topology_background_service.py` runs the CIM17 distributed-area code against Blazegraph. Register it
+with `topology_background_service.config`, then start it:
 
 ```bash
 python topology_background_service.py
 ```
 
-The service listens on `goss.gridappsd.request.data.cimtopology` and responds to:
-
-| `requestType` | Description |
-|---|---|
-| `GET_DISTRIBUTED_AREAS` | Returns full hierarchical topology message |
-| `GET_BASE_TOPOLOGY` | Not yet supported |
-| `GET_SNAPSHOT_TOPOLOGY` | Not yet supported |
-
-Example request:
+It listens on `goss.gridappsd.request.data.cimtopology`. `GET_DISTRIBUTED_AREAS` returns the
+hierarchical topology message for a `Feeder`, `FeederArea` or `DistributionArea` mRID.
+`GET_BASE_TOPOLOGY` and `GET_SNAPSHOT_TOPOLOGY` are not supported.
 
 ```python
-import os
-import json
 from gridappsd import GridAPPSD
 
-# Connect to GridAPPS-D
-os.environ['GRIDAPPSD_USER'] = 'app_user'
-os.environ['GRIDAPPSD_PASSWORD'] = '1234App'
 gapps = GridAPPSD()
-assert gapps.connected
-
-# Request distributed topology for a feeder or distribution area by mRID
-topic = "goss.gridappsd.request.data.cimtopology"
-message = {
-    "requestType": "GET_DISTRIBUTED_AREAS",
-    "mRID": "49AD8E07-3BF9-A4E2-CB8F-C3722F837B62",  # IEEE 13-node feeder mRID
-    "resultFormat": "JSON"
-}
-response = gapps.get_response(topic, message, timeout=30)
-
-# Response contains the hierarchical topology message
-print(json.dumps(response, indent=4))
+message = {"requestType": "GET_DISTRIBUTED_AREAS",
+           "mRID": "49AD8E07-3BF9-A4E2-CB8F-C3722F837B62",  # IEEE 13-node feeder
+           "resultFormat": "JSON"}
+response = gapps.get_response("goss.gridappsd.request.data.cimtopology", message, timeout=30)
 ```
 
-The `mRID` can be a `Feeder`, `FeederArea`, or `DistributionArea` mRID — the service detects the container type automatically.
-
-### Standalone (no GridAPPS-D)
-
-```python
-from cimgraph.databases import BlazegraphConnection
-from cimtopology.utils import DistributedTopologyMessage
-import cimgraph.data_profile.cimhub_2023 as cim
-
-blazegraph = BlazegraphConnection()
-container = blazegraph.get_object(mrid="<feeder-mRID>")
-
-topo = DistributedTopologyMessage()
-topo.get_context_from_feeder(container, blazegraph)
-
-print(topo.message)
-```
-
-### Configuration
-
-The service reads these environment variables (defaults shown):
-
-| Variable | Default | Description |
-|---|---|---|
-| `CIMG_CIM_PROFILE` | `cimhub_2023` | CIM data profile |
-| `CIMG_URL` | `http://localhost:8889/bigdata/namespace/kb/sparql` | Blazegraph SPARQL endpoint |
-| `CIMG_NAMESPACE` | `http://iec.ch/TC57/CIM100#` | CIM namespace URI |
-| `GRIDAPPSD_USER` | `app_user` | GridAPPS-D username |
-| `GRIDAPPSD_PASSWORD` | `1234App` | GridAPPS-D password |
-
-## Architecture
-
-```
-cimtopology/
-├── distribution/
-│   ├── distributed_topology.py   # Core graph traversal (DistributedTopology)
-│   ├── feeder_area.py            # Feeder-to-first-switch areas
-│   ├── switch_area.py            # Switch-bounded areas
-│   ├── secondary_area.py         # Transformer secondary areas
-│   └── dso_topology.py           # DSO feeder division (see Known Limitations)
-├── substation/
-│   ├── busbar_topology.py        # Substation bus topology
-│   └── bus_number_mapper.py      # Bus numbering for simulation exports
-├── transmission/
-│   └── distribution_area.py      # Top-level distribution area processing
-└── utils/
-    ├── distributed_topo_message.py  # JSON topology message builder
-    └── addressable.py               # Equipment addressability classification
-```
-
-### Topology traversal
-
-Graph traversal follows `ConnectivityNode → Terminal → ConductingEquipment` using `DistributedTopology.expand_to_boundaries()`. Boundaries are:
-- Normally-open switches (Switch, Breaker, Recloser, etc.)
-- Voltage-changing transformers (secondary areas only)
-
-### Equipment classification
-
-**Addressable** (controllable/observable): switches, breakers, reclosers, disconnectors, load break switches, sectionalisers, power electronics (PV, battery, wind), ratio tap changers, shunt compensators, synchronous/asynchronous machines.
-
-**Unaddressable** (passive): line segments, fuses, power transformers, transformer tanks, energy sources, energy consumers.
+The service sets `CIMG_CIM_PROFILE=cimhub_2023`,
+`CIMG_URL=http://localhost:8889/bigdata/namespace/kb/sparql` and
+`CIMG_NAMESPACE=http://iec.ch/TC57/CIM100#`, and authenticates with `GRIDAPPSD_USER` /
+`GRIDAPPSD_PASSWORD`.
 
 ## Test Models
 
-Large CIM model files are stored in `test/test_models/` and tracked with [Git LFS](https://git-lfs.github.com/). To use them after cloning:
+`test/test_models/` holds plain files (no Git LFS):
 
-```bash
-# Install Git LFS (one-time)
-git lfs install
+- `ieee13_distributed.xml`: IEEE 13-node feeder (`cimhub_2023`) with the GridAPPS-D reference areas.
+  `test/cim17` rebuilds the areas and checks them against it.
+- `ieee13_topo_msg.json`: the GridAPPS-D topology message for that feeder.
+- `new_topo_message.json`: the shape of the topology message.
 
-# Pull LFS files
-git lfs pull
-```
+The CIM18 (`cim18v17`) fixtures are the `.cimtbl` files in CIMTBL-Models.
 
-Included models:
-- `ieee13_distributed.xml` — IEEE 13-node test feeder with distributed area assignments
-- `dso_9500_node.xml` / `.jsonld` — IEEE 9500-node model used for DSO topology development
-- `ieee13_topo_msg.json` — Example topology message output for IEEE 13-node feeder
-
-## Examples
-
-See [`examples/9500node_example.ipynb`](examples/9500node_example.ipynb) for a worked example of loading the 9500-node model, assigning equipment containers to feeder areas, and running the topology processor.
-
-> **Note:** The example notebook contains hardcoded paths and node names specific to the 9500-node model. See Known Limitations below.
-
-## Known Limitations
-
-- **`dso_topology.py` and `examples/9500node_example.ipynb` are hardcoded to the IEEE 9500-node model** for initial development. Equipment container assignment uses 9500-node naming conventions (`hvmv`, `s1`/`s2`/`s3`, etc.) and is not yet generalized.
-- `get_context_from_feeder_area()` in `distributed_topo_message.py` is incomplete.
-- `GET_BASE_TOPOLOGY` and `GET_SNAPSHOT_TOPOLOGY` request types are not yet implemented.
+[`examples/9500node_example.ipynb`](examples/9500node_example.ipynb) is the CIM17-era DSO development
+notebook for `cim17/distribution/dso_topology.py`. Like that module, it is hardcoded to IEEE 9500
+names and to local paths.
 
 ## License
 
