@@ -21,7 +21,7 @@ The repo is being rewritten for the CIM17 -> CIM18 change in distribution topolo
 | Package | Status |
 |---|---|
 | `cimtopology.core` | Model-agnostic LinkNet core and shared API. Tested. |
-| `cimtopology.cim18` | Planned: the `cim18v17` reader onto the core, then `ConnectedArea` construction. |
+| `cimtopology.cim18` | `cim18v17` models: feeder, switch and secondary `ConnectedArea`s; `TopologicalNode`s, bus numbers and `TopologicalIsland`s for feeders and node-breaker substations. Tested. |
 | `cimtopology.cim17` | Frozen pre-CIM18 code (`cimhub_2023` / `cim17v40`), kept as the behavioral reference. |
 
 ## Installation
@@ -63,6 +63,21 @@ write_sorted_csv(topology.sort(), 'sorted.csv')   # each branch once, oriented f
 walk(network)['lv']         # BusSystem(0.48, THREE_PHASE); its .base_voltage is 'bv_480v'
 ```
 
+### CIM18 (`cim18v17`) models
+
+```python
+import cimtables
+from cimtopology.cim18 import build_connected_areas, build_topology, number_buses
+
+feeder = cimtables.load_model('IEEE13_CDPSM.cimtbl')
+feeder_area = build_connected_areas(feeder)   # ConnectedArea tree: feeder > switch > secondary
+build_topology(feeder)                        # TopologicalNodes, then TopologicalIslands
+number_buses(substation_model)                # busNumber / busName for busbar buses
+```
+
+Each builder works in place and can be rerun after switching. `CLAUDE.md` lists what changed from the
+CIM17 code.
+
 ### GridAPPS-D background service (CIM17)
 
 `topology_background_service.py` runs the CIM17 distributed-area code against Blazegraph. Register it
@@ -97,8 +112,8 @@ The service sets `CIMG_CIM_PROFILE=cimhub_2023`,
 
 - `ieee13_distributed.xml`: IEEE 13-node feeder (`cimhub_2023`) with the GridAPPS-D reference areas.
   `test/cim17` rebuilds the areas and checks them against it.
-- `ieee13_topo_msg.json`: the GridAPPS-D topology message for that feeder.
 - `new_topo_message.json`: the shape of the topology message.
+- `node_breaker_substation.cimtbl`: a small `cim18v17` node-breaker substation for the bus and island tests.
 
 The CIM18 (`cim18v17`) fixtures are the `.cimtbl` files in CIMTBL-Models.
 

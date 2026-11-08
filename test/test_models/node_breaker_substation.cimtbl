@@ -1,0 +1,68 @@
+# A small cim18v17 node-breaker substation for the TopologicalNode, bus-number and island tests.
+# No such fixture exists in CIMTBL-Models (no cim18v17 model there has a BusbarSection or VoltageLevel).
+#
+#   115 kV (V115)                                      13.8 kV (V13.8)
+#   BB1 n1 ==DS_L1== j1 (J1) ==CB_L1== j2 --L1-- far (grid source)
+#    |
+#   CB_COUPLER (closed, retained: a bus tie IEC does not merge)
+#    |
+#   BB2 n2 ==CB_T1== t1 =T1=  t2 ==CB_T2== n3 BB3 ==CB_G (open)== g1 (G1)
+#
+# Buses (closed, non-retained switches merge): {n1, j1, j2} {n2, t1} {far} {t2, n3} {g1}: 5 of 9 nodes.
+# Islands (closed switches cross, retained or not; lines and transformers cross): everything but g1,
+# referenced at far (EnergySource), and g1 alone, referenced at its SynchronousMachine.
+# Bus numbers: region R1 = 1, substation ALPHA = 1, levels V115 = 1, V13.8 = 2 (alphabetical):
+# BB1 100111 ALPHA_115_1, BB2 100112 ALPHA_115_2, BB3 100121 ALPHA_13_1.
+
+Profile = cim18v17
+Authority = https://github.com/PNNL-CIM-Tools/CIM-Graph-Topology-Processor
+Model = node_breaker_substation
+
+Object GeographicalRegion: mRID=region, name=region
+Object SubGeographicalRegion: mRID=r1, name=R1, Region=region
+Object Substation: mRID=alpha, name=ALPHA, Region=r1
+
+Table BaseVoltage: mRID, nominalVoltage (kV)
+    bv_115kv,  115
+    bv_13p8kv, 13.8
+
+Table VoltageLevel: mRID, name, BaseVoltage, Substation=alpha
+    v115,  V115,  bv_115kv
+    v13p8, V13.8, bv_13p8kv
+
+Table ConnectivityNode: mRID, ConnectivityNodeContainer
+    n1,  v115
+    n2,  v115
+    j1,  v115
+    j2,  v115
+    far, v115
+    t1,  v115
+    t2,  v13p8
+    n3,  v13p8
+    g1,  v13p8
+
+Table BusbarSection: mRID, name, node, BaseVoltage, EquipmentContainer
+    bb1, BB1, n1, bv_115kv,  v115
+    bb2, BB2, n2, bv_115kv,  v115
+    bb3, BB3, n3, bv_13p8kv, v13p8
+
+Object Junction: mRID=jn1, name=J1, node=j1, BaseVoltage=bv_115kv, EquipmentContainer=v115
+
+Table Breaker: mRID, name, node1, node2, open, normalOpen, retained, BaseVoltage, EquipmentContainer
+    cb_coupler, CB_COUPLER, n1, n2, false, false, true,  bv_115kv,  v115
+    cb_l1,      CB_L1,      j1, j2, false, false, false, bv_115kv,  v115
+    cb_t1,      CB_T1,      n2, t1, false, false, false, bv_115kv,  v115
+    cb_t2,      CB_T2,      t2, n3, false, false, false, bv_13p8kv, v13p8
+    cb_g,       CB_G,       n3, g1, true,  true,  false, bv_13p8kv, v13p8
+
+Object Disconnector: mRID=ds_l1, name=DS_L1, node1=n1, node2=j1, open=false, normalOpen=false, BaseVoltage=bv_115kv, EquipmentContainer=v115
+
+Object ACLineSegment: mRID=l1, name=L1, node1=j2, node2=far, BaseVoltage=bv_115kv, EquipmentContainer=v115
+Object EnergySource: mRID=grid, name=grid, node=far, BaseVoltage=bv_115kv, EquipmentContainer=v115
+
+Object PowerTransformer: mRID=t1x, name=T1, EquipmentContainer=alpha
+Table PowerTransformerEnd: mRID, node, endNumber, ratedU (kV), BaseVoltage, PowerTransformer=t1x
+    t1x_1, t1, 1, 115,  bv_115kv
+    t1x_2, t2, 2, 13.8, bv_13p8kv
+
+Object SynchronousMachine: mRID=g1m, name=G1, node=g1, BaseVoltage=bv_13p8kv, EquipmentContainer=v13p8

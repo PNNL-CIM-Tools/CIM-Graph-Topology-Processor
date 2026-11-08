@@ -14,18 +14,25 @@ The repo is being rewritten for the CIM17 -> CIM18 change in distribution topolo
 | Layer | Package | Status |
 |---|---|---|
 | Model-agnostic core | `cimtopology.core` | LinkNet structure + shared API, tested |
-| CIM18 (`cim18v17` profile) | `cimtopology.cim18` | **not started**: CIM18 reader onto the core, then ConnectedArea construction |
+| CIM18 (`cim18v17` profile) | `cimtopology.cim18` | ConnectedAreas, TopologicalNodes, bus numbers, TopologicalIslands, tested |
 | CIM17 reference | `cimtopology.cim17` | frozen pre-CIM18 code, kept as the behavioral reference |
 
 The core runs **before any CIM model exists**. Native-format converters (the `cimhub_{tool}` packages
 for DSS, CYME SXST, ...) parse their own files and pass the core a `Network`. The CIM readers do the
 same from a FeederModel.
 
+```python
+from cimtopology.cim18 import build_connected_areas, build_topology, number_buses
+build_connected_areas(feeder_model)   # feeder / switch / secondary ConnectedAreas, returns the feeder area
+build_topology(model)                 # TopologicalNodes, then TopologicalIslands (feeder or substation)
+number_buses(model)                   # busNumber / busName on busbar and junction buses
+```
+
 ## Development Commands
 
 ```bash
 uv sync --extra dev                  # cim-graph, cimprofiles, cimtables come from sibling checkouts
-.venv/bin/python -m pytest test      # all tests (core, cim17)
+.venv/bin/python -m pytest test      # all tests (core, cim17, cim18; cim18 needs ../CIMTBL-Models)
 uv run --with networkx --with scipy --with rustworkx --with igraph python benchmarks/run.py
 python topology_background_service.py   # GridAPPS-D service (cim17 path; needs --extra gridappsd)
 ```
@@ -82,11 +89,46 @@ meant to replace `cimhub_core/connectivity/base_voltage.py`, running before the 
 **`dump.py`:** `write_sorted_csv` (the `sort()` rows) and `write_linknet_csv` (node and terminal
 tables in the 2022 Figure 8 layout).
 
-### `cimtopology/cim18/`: planned
+### `cimtopology/cim18/`: cim18v17 topology on the LinkNet core
 
-CIM18 reader: a `cim18v17` FeederModel becomes a `Network`. Then the feeder, switch and secondary area
-modules (kept small, one per area kind) are built on `spanning_forest` and write `ConnectedArea`s.
-The first target is IEEE13_CDPSM: 1 feeder area, 4 switch areas, 2 secondary areas.
+Every builder works in place, deletes what a previous run built first (so it is safe to rerun after
+switching), and writes both sides of every association. cim-graph sets neither side for you.
+
+- `index.py`: `index_model(model)` turns the model into a `LinkNet`, with ConnectivityNodes as nodes and
+  Terminals as beads. Arrays map each LinkNet index back to its CIM object. It is built from the Terminal
+  side, so it finds every ConductingEquipment subclass. A Terminal without a ConnectivityNode raises.
+- `boundaries.py`: `bounds_switch_area` and `changes_voltage`, the cim18 `check_boundary`. **`changes_voltage`
+  is the secondary-area definition**, and the do-not-simplify rule below applies to it too.
+- `areas.py`: the `ConnectedArea` writers and `trace()`, a `spanning_forest` that stops at `Cuts`.
+  `feeder_area.py`, `switch_area.py`, `secondary_area.py` and the orchestrator
+  `connected_areas.build_connected_areas` sit on it.
+- `switching.py`: `is_open` (`open`, else `normalOpen`, else closed), `is_bus_tie` (closed and not
+  `retained`), `in_service` and `energizes`.
+- `topological_node.py`: buses. CNs merge across bus ties only (IEC 61970-301). An open or retained
+  switch splits a bus, and lines and transformers never merge. BaseVoltage comes from the CN, its
+  VoltageLevel, or the equipment (a transformer terminal's end). Conflicting values raise.
+- `bus_numbers.py`: a port of cim17 `BusNumberMapper` (same formula and spillover). It writes the native
+  `busNumber`/`busName` on buses holding a BusbarSection or Junction.
+- `topological_island.py`: an island crosses every in-service closed piece of equipment, and bus ties
+  always. The angle reference is an EnergySource bus, else a SynchronousMachine bus. Islands with
+  neither are logged; they are the unenergized islands.
+- `topology.py`: `build_topology(model)` builds the nodes, then the islands.
+
+**Changes from cim17** (each is tested in `test/cim18/`):
+1. Every Switch subclass except Jumper bounds a switch area, and `Switch.areaBoundary` overrides that.
+   cim17 crossed Fuse and Disconnector. IEEE13 gets 5 switch areas (cim17: 4), as tier2 does.
+2. `changes_voltage` reads the end BaseVoltage first, then `ratedU`, then the TankConfiguration windings.
+   With none of them it raises, where cim17 took the transformer for a regulator (None == None).
+3. Membership is multi-valued (`AdditionalEquipmentContainer`), and `EquipmentContainer` is never changed.
+   A voltage-changing transformer belongs to its secondary area(s).
+4. Secondary areas no longer overwrite their switch area's boundaries.
+5. There is no DistributionArea and no `Feeder.FeederArea` (gone in cim18v17). The feeder area is the top.
+6. Switch areas are numbered breadth first from the head (`{feeder mRID}.{n}`).
+7. Buses follow the IEC rule, clear stale topology first (cim17 defect A), and write
+   `ConnectivityNode.TopologicalNode` (cim17 defect B). There is no BusNameMarker or aliasName.
+   **The isolated-shunt fold is not ported**: a shunt behind an open breaker keeps its own bus and a
+   dead island, and `inService` is never changed. The fold is a PSS/E-export convention.
+8. `build_topology` has no `xfmr_boundary`. A bus never spans a transformer, and an island always crosses one.
 
 ### `cimtopology/cim17/`: frozen reference
 
@@ -145,12 +187,21 @@ with `CIMG_CIM_PROFILE=cim18v17`. cimhub_2026 is being deleted, so don't target 
 
 ## Test Data
 
-- `test/test_models/ieee13_distributed.xml`: cimhub_2023 IEEE13, shipping the GridAPPS-D reference areas.
-  `ieee13_topo_msg.json` is the GridAPPS-D topology message for it. The repo does not use Git LFS: these
-  files were always plain blobs, so don't add LFS rules back to `.gitattributes`.
-- `/home/ande188/CIMTBL-Models/distribution/IEEE/IEEE13_*/*.cimtbl`: `cim18v17` fixtures, loaded with
-  `cimtables.load_model(path)`. IEEE13_CDPSM is the CIM18 reference (sub3 three-winding, reg1-3, xfm1,
-  tpoletop).
+- `test/test_models/ieee13_distributed.xml`: cimhub_2023 IEEE13, shipping the GridAPPS-D reference areas
+  that `test/cim17` rebuilds. **Keep it**: it is the cim17 behavioral reference. The repo does not use Git
+  LFS (these files were always plain blobs), so don't add LFS rules back to `.gitattributes`.
+- `test/test_models/node_breaker_substation.cimtbl`: a hand-written cim18v17 node-breaker substation
+  (retained coupler, line and transformer bays, a Junction, a generator behind an open breaker). Its
+  header gives the expected buses, islands and bus numbers. No CIMTBL-Models fixture has a
+  BusbarSection or VoltageLevel.
+- CIMTBL-Models (`$CIMTBL_MODELS`, default `../CIMTBL-Models`; the cim18 tests skip without it):
+  - `distribution/IEEE/IEEE13_CDPSM`: the CIM18 reference feeder (sub3 three-winding, reg1-3, xfm1,
+    tpoletop). It has no NormalHeadTerminal, so the feeder area starts at the EnergySource.
+  - `tiered_tso_dso/IEEE13/tier2_switch_delimited.cimtbl`: hand-built expected switch areas. The tests
+    check the boundary terminals against it.
+  - Load fixtures with `test/cim18/conftest.load`, never `cimtables.load_model` directly.
+    `load_model` writes `CIMG_CIM_PROFILE` into the process environment, and `load` restores it so the
+    cim17 tests still see `cimhub_2023`.
 - `/home/ande188/CIMHub_2_0/debug/*.sxst`: native CYME networks for the benchmark (IEEE9500 from DSS,
   Beaverton, a meshed secondary network, Duquesne at 128k buses).
 
@@ -169,12 +220,18 @@ supported.
 
 ## Known Issues and TODOs
 
-1. `cimtopology/cim18/` does not exist yet (see above).
+1. Downstream callers still import the pre-split paths, which no longer exist:
+   - CIM-Repair `api.py` uses `from cimtopology import build_topology`. Change it to
+     `from cimtopology.cim18 import build_topology` once it is on cim18v17; it is on cimhub_2026 today.
+   - These use `cimtopology.substation.busbar_topology`: CIMHub_2_0 `psm_to_cim_service.py`, the
+     main-project toolkits (psm-to-cim, data-mesh, psm-client), cascadia-model `build.py` and cascadia
+     `psm.ipynb`. Change them to `cimtopology.cim17.substation` while they are on cim17v40 / cim18gad.
+   - Powergrid-Models and CIMHub_2_0 `build.ipynb` use `cimtopology.distribution`. Change them to
+     `cimtopology.cim17.distribution`.
 2. CIMHub still uses its own `cimhub_core/topology.py`, `connectivity/base_voltage.py` and
    `cimhub_opendss/importer/cimtbl/bus_graph.py`. They should move to `cimtopology.core`.
-3. Pending removal: `cimtopology/transmission/` (empty stubs) and `test/test_models/dso_9500_node.{xml,jsonld}`
-   (86 MB, a CIM101-draft model that no test uses). Both remain in history.
-4. cim17 known defects, pinned rather than fixed: `check_boundary` reads an unrated transformer as a
+3. Pending removal: `cimtopology/transmission/` (empty stubs).
+4. cim17 known defects, pinned in cim17 and fixed in cim18: `check_boundary` reads an unrated transformer as a
    regulator (None == None). `secondary_area.py` overwrites `switch_area_model.boundaries` inside its
    own loop. `dso_topology.py` hardcodes 9500-node `hvmv` switch logic. The `BusNumberMapper` single-digit
    voltage-level slot overflows on real substations.
