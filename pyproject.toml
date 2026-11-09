@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.10,<4.0"
 dependencies = [
     # pre-1.0: pin below the next minor
-    "cim-graph>=0.6.0a0,<0.7",
+    "cim-graph>=0.6.0a2,<0.7",
     "cim-profiles>=0.1.0a4,<0.2",
 ]
 
@@ -23,7 +23,7 @@ dev = [
     "ipykernel>=6.25.1",
     "pytest>=8.3.5",
     # test-only: builds the cim18v17 test fixtures from CIMTBL-Models .cimtbl files
-    "cimtables>=0.1.0a1",
+    "cim-tables>=0.1.0a1",
 ]
 
 [tool.uv]
@@ -34,7 +34,7 @@ prerelease = "allow"
 [tool.uv.sources]
 cim-graph = { path = "../CIM-Graph", editable = true }
 cim-profiles = { path = "../CIM-Profiles", editable = true }
-cimtables = { path = "../CIM-Tables", editable = true }
+cim-tables = { path = "../CIM-Tables", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["test"]

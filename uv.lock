@@ -372,47 +372,7 @@ dev = [
 ]
 
 [[package]]
-name = "cim-topology"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "cim-graph" },
-    { name = "cim-profiles" },
-]
-
-[package.optional-dependencies]
-gridappsd = [
-    { name = "gridappsd-python" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "cimtables" },
-    { name = "ipykernel", version = "7.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "ipykernel", version = "7.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cim-graph", editable = "../CIM-Graph" },
-    { name = "cim-profiles", editable = "../CIM-Profiles" },
-    { name = "gridappsd-python", marker = "extra == 'gridappsd'" },
-]
-provides-extras = ["gridappsd"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "cimtables", editable = "../CIM-Tables" },
-    { name = "ipykernel", specifier = ">=6.25.1" },
-    { name = "pre-commit", specifier = ">=2.17.0" },
-    { name = "pytest", specifier = ">=8.3.5" },
-]
-
-[[package]]
-name = "cimtables"
+name = "cim-tables"
 version = "0.1.0"
 source = { editable = "../CIM-Tables" }
 dependencies = [
@@ -430,6 +390,46 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.3.5" }]
+
+[[package]]
+name = "cim-topology"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "cim-graph" },
+    { name = "cim-profiles" },
+]
+
+[package.optional-dependencies]
+gridappsd = [
+    { name = "gridappsd-python" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "cim-tables" },
+    { name = "ipykernel", version = "7.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "ipykernel", version = "7.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cim-graph", editable = "../CIM-Graph" },
+    { name = "cim-profiles", editable = "../CIM-Profiles" },
+    { name = "gridappsd-python", marker = "extra == 'gridappsd'" },
+]
+provides-extras = ["gridappsd"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "cim-tables", editable = "../CIM-Tables" },
+    { name = "ipykernel", specifier = ">=6.25.1" },
+    { name = "pre-commit", specifier = ">=2.17.0" },
+    { name = "pytest", specifier = ">=8.3.5" },
+]
 
 [[package]]
 name = "colorama"
