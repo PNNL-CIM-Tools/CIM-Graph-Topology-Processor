@@ -1,5 +1,23 @@
 # CIM-Topology-Processor
 
+![GitHub Tag](https://img.shields.io/github/v/tag/PNNL-CIM-Tools/CIM-Graph-Topology-Processor)
+![GitHub Release Date](https://img.shields.io/github/release-date-pre/PNNL-CIM-Tools/CIM-Graph-Topology-Processor)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/PNNL-CIM-Tools/CIM-Graph/release.yml)
+![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/PNNL-CIM-Tools/CIM-Graph-Topology-Processor)
+
+
+![PyPI - Version](https://img.shields.io/pypi/v/cim-topology)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/cim-topology?label=pypi%20downloads)
+![PyPI - Format](https://img.shields.io/pypi/format/cim-topology)
+
+
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/PNNL-CIM-Tools/CIM-Graph-Topology-Processor)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-pr/PNNL-CIM-Tools/CIM-Graph-Topology-Processor)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/t/PNNL-CIM-Tools/CIM-Graph-Topology-Processor)
+
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/PNNL-CIM-Tools/CIM-Graph-Topology-Processor/total?label=git%20downloads)
+![GitHub License](https://img.shields.io/github/license/PNNL-CIM-Tools/CIM-Graph-Topology-Processor)
+
 The topology processor shared by the CIM tool chain (CIMHub, CIM-Repair, GridAPPS-D). Everything
 that involves spanning trees or topology processing lives here behind one API: sorting and orienting a
 network, islands, voltage zones and base voltages, connectivity gaps, and the distributed areas of a
