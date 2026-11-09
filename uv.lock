@@ -322,71 +322,38 @@ wheels = [
 
 [[package]]
 name = "cim-graph"
-version = "0.6.0a1"
+version = "0.6.0"
 source = { editable = "../CIM-Graph" }
 dependencies = [
-    { name = "cimprofiles" },
+    { name = "cim-profiles" },
     { name = "defusedxml" },
-    { name = "requests" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "cim-graph", extras = ["all"], marker = "extra == 'dev'" },
     { name = "cim-graph", extras = ["sparql", "neo4j", "mysql", "gridappsd", "rdflib"], marker = "extra == 'all'" },
-    { name = "cimprofiles", editable = "../CIM-Profiles" },
+    { name = "cim-profiles", specifier = ">=0.1.0a1,<0.2" },
     { name = "defusedxml", specifier = ">=0.7.1" },
-    { name = "graphviz", marker = "extra == 'dev'", specifier = ">=0.19.1" },
     { name = "gridappsd-python", marker = "extra == 'gridappsd'", specifier = ">=2026.2.1" },
-    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.27.1" },
     { name = "mysql-connector-python", marker = "extra == 'mysql'", specifier = ">=9.2.0" },
     { name = "neo4j", marker = "extra == 'neo4j'", specifier = ">=5.10.0" },
-    { name = "nest-asyncio", marker = "extra == 'neo4j'", specifier = ">=1.5.8" },
     { name = "oxrdflib", marker = "extra == 'rdflib'", specifier = ">=0.3.6" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=2.17.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
     { name = "rdflib", marker = "extra == 'rdflib'", specifier = ">=7.0.0" },
-    { name = "requests", specifier = ">=2.31" },
     { name = "sparqlwrapper", marker = "extra == 'sparql'", specifier = ">=2.0.0" },
 ]
-provides-extras = ["sparql", "neo4j", "mysql", "gridappsd", "rdflib", "all", "dev"]
+provides-extras = ["sparql", "neo4j", "mysql", "gridappsd", "rdflib", "all"]
 
-[[package]]
-name = "cim-topology"
-version = "0.0.1a0"
-source = { editable = "." }
-dependencies = [
-    { name = "cim-graph" },
-    { name = "cimprofiles" },
-]
-
-[package.optional-dependencies]
+[package.metadata.requires-dev]
 dev = [
-    { name = "cimtables" },
-    { name = "ipykernel", version = "7.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "ipykernel", version = "7.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "pytest" },
+    { name = "graphviz", specifier = ">=0.19.1" },
+    { name = "ipykernel", specifier = ">=6.27.1" },
+    { name = "pre-commit", specifier = ">=2.17.0" },
+    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "requests", specifier = ">=2.31" },
 ]
-gridappsd = [
-    { name = "gridappsd-python" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cim-graph", editable = "../CIM-Graph" },
-    { name = "cimprofiles", editable = "../CIM-Profiles" },
-    { name = "cimtables", marker = "extra == 'dev'", editable = "../CIM-Tables" },
-    { name = "gridappsd-python", marker = "extra == 'gridappsd'" },
-    { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.25.1" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=2.17.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
-]
-provides-extras = ["gridappsd", "dev"]
 
 [[package]]
-name = "cimprofiles"
+name = "cim-profiles"
 version = "0.1.0"
 source = { editable = "../CIM-Profiles" }
 dependencies = [
@@ -405,19 +372,59 @@ dev = [
 ]
 
 [[package]]
+name = "cim-topology"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "cim-graph" },
+    { name = "cim-profiles" },
+]
+
+[package.optional-dependencies]
+gridappsd = [
+    { name = "gridappsd-python" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "cimtables" },
+    { name = "ipykernel", version = "7.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "ipykernel", version = "7.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cim-graph", editable = "../CIM-Graph" },
+    { name = "cim-profiles", editable = "../CIM-Profiles" },
+    { name = "gridappsd-python", marker = "extra == 'gridappsd'" },
+]
+provides-extras = ["gridappsd"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "cimtables", editable = "../CIM-Tables" },
+    { name = "ipykernel", specifier = ">=6.25.1" },
+    { name = "pre-commit", specifier = ">=2.17.0" },
+    { name = "pytest", specifier = ">=8.3.5" },
+]
+
+[[package]]
 name = "cimtables"
-version = "0.1.0a1"
+version = "0.1.0"
 source = { editable = "../CIM-Tables" }
 dependencies = [
     { name = "cim-graph" },
-    { name = "cimprofiles" },
+    { name = "cim-profiles" },
     { name = "lark" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "cim-graph", editable = "../CIM-Graph" },
-    { name = "cimprofiles", editable = "../CIM-Profiles" },
+    { name = "cim-profiles", editable = "../CIM-Profiles" },
     { name = "lark", specifier = ">=1.1.9" },
 ]
 

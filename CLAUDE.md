@@ -31,13 +31,13 @@ number_buses(model)                   # busNumber / busName on busbar and juncti
 ## Development Commands
 
 ```bash
-uv sync --extra dev                  # cim-graph, cimprofiles, cimtables come from sibling checkouts
+uv sync                              # cim-graph, cim-profiles, cimtables come from sibling checkouts
 .venv/bin/python -m pytest test      # all tests (core, cim17, cim18; cim18 needs ../CIMTBL-Models)
 uv run --with networkx --with scipy --with rustworkx --with igraph python benchmarks/run.py
 python topology_background_service.py   # GridAPPS-D service (cim17 path; needs --extra gridappsd)
 ```
 
-`[tool.uv.sources]` in pyproject.toml points cim-graph, cimprofiles and cimtables at
+`[tool.uv.sources]` in pyproject.toml points cim-graph, cim-profiles and cimtables at
 `../CIM-Graph`, `../CIM-Profiles` and `../CIM-Tables`, as editable installs.
 
 ## Architecture

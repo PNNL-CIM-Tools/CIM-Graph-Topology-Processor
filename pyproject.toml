@@ -1,6 +1,6 @@
 [project]
 name = "cim-topology"
-version = "0.0.1a0"
+version = "0.1.0"
 description = "Topology Processor based on CIM-Graph Library"
 authors = [
     {name = "A. Anderson", email = "19935503+AAndersn@users.noreply.github.com"}
@@ -10,16 +10,19 @@ requires-python = ">=3.10,<4.0"
 dependencies = [
     # pre-1.0: pin below the next minor
     "cim-graph>=0.6.0a0,<0.7",
-    "cimprofiles>=0.1.0a4,<0.2",
+    "cim-profiles>=0.1.0a4,<0.2",
 ]
 
 [project.optional-dependencies]
 gridappsd = ["gridappsd-python"]
+
+# Not shipped to PyPI users; `uv sync` / `uv run` install it by default.
+[dependency-groups]
 dev = [
     "pre-commit>=2.17.0",
     "ipykernel>=6.25.1",
     "pytest>=8.3.5",
-    # builds the cim18v17 test fixtures from CIMTBL-Models .cimtbl files
+    # test-only: builds the cim18v17 test fixtures from CIMTBL-Models .cimtbl files
     "cimtables>=0.1.0a1",
 ]
 
@@ -30,7 +33,7 @@ prerelease = "allow"
 # Local development against sibling checkouts.
 [tool.uv.sources]
 cim-graph = { path = "../CIM-Graph", editable = true }
-cimprofiles = { path = "../CIM-Profiles", editable = true }
+cim-profiles = { path = "../CIM-Profiles", editable = true }
 cimtables = { path = "../CIM-Tables", editable = true }
 
 [tool.pytest.ini_options]

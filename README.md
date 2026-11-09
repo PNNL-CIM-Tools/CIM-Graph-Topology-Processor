@@ -47,12 +47,12 @@ The repo is being rewritten for the CIM17 -> CIM18 change in distribution topolo
 Requires Python 3.10+ and [uv](https://github.com/astral-sh/uv).
 
 ```bash
-uv sync --extra dev                 # cim-graph, cimprofiles and cimtables from sibling checkouts
-uv sync --extra dev --extra gridappsd   # plus the GridAPPS-D service
+uv sync                       # cim-graph, cim-profiles and cimtables from sibling checkouts
+uv sync --extra gridappsd      # plus the GridAPPS-D service
 .venv/bin/python -m pytest test
 ```
 
-`[tool.uv.sources]` in `pyproject.toml` points `cim-graph`, `cimprofiles` and `cimtables` at
+`[tool.uv.sources]` in `pyproject.toml` points `cim-graph`, `cim-profiles` and `cimtables` at
 `../CIM-Graph`, `../CIM-Profiles` and `../CIM-Tables`.
 
 ## Usage
