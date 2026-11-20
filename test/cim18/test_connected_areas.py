@@ -29,7 +29,7 @@ def _areas(area):
 
 def _lines_and_transformers(area, cim):
     return {equipment.name for equipment in area.AdditionalGroupedEquipment
-            if isinstance(equipment, (cim.ACLineSegment, cim.PowerTransformer))}
+            if isinstance(equipment, (cim.ACLineSegment, cim.PowerTransformer, cim.AutoTransformer))}
 
 
 def _membership(model) -> dict[str, list[str]]:
