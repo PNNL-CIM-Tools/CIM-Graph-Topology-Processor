@@ -23,7 +23,7 @@ dev = [
     "ipykernel>=6.25.1",
     "pytest>=8.3.5",
     # test-only: builds the cim18v17 test fixtures from CIMTBL-Models .cimtbl files
-    "cim-tables>=0.2.0a1",
+    "cim-tables>=0.1.1a1",
 ]
 
 [tool.uv]
