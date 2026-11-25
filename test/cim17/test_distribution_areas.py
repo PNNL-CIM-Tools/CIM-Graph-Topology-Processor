@@ -62,8 +62,10 @@ def ieee13():
 
         connection = XMLFile(filename=str(MODEL))
         cim = connection.cim
-        loader = FeederModel(connection=connection, container=cim.Feeder(), distributed=False)
-        [feeder] = loader.graph[cim.Feeder].values()
+        placeholder = cim.Feeder()
+        loader = FeederModel(connection=connection, container=placeholder, distributed=False)
+        # cim-graph keeps the placeholder container in the graph next to the file's feeder
+        [feeder] = [f for f in loader.graph[cim.Feeder].values() if f is not placeholder]
         network = FeederModel(connection=connection, container=feeder, distributed=False)
 
         reference = _membership(network, cim)
