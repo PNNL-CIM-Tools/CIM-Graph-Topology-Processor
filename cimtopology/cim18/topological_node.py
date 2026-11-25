@@ -8,7 +8,9 @@ ConnectivityNode, so every node lands in exactly one bus and none is left floati
 
 Two cim17 defects are fixed by construction:
 
-- the topology a model already carries is deleted first (cim17 kept it, so a rebuild changed nothing);
+- the topology a model already carries is deleted first (cim17 kept it, so a rebuild changed nothing),
+  and that includes the ``SvVoltage``/``SvInjection`` state variables hanging from each bus -- a
+  solved voltage belongs to the bus it was solved for and cannot outlive it (:func:`clear_topology`);
 - every association is written from both sides: Terminal <-> TopologicalNode and
   ConnectivityNode <-> TopologicalNode (cim17 missed ``ConnectivityNode.TopologicalNode``, and the
   nodes drew as floating).
@@ -16,6 +18,13 @@ Two cim17 defects are fixed by construction:
 cim17 also folded a shunt stranded behind an open breaker into the busbar's bus and set it out of
 service, a PSS/E export convention. That is not done here: such a shunt gets its own bus (and a
 dead island), and ``inService`` is never changed.
+
+**This module owns a bus's state variables, both their creation and their removal.** Every bus gets
+one empty ``SvVoltage`` and one ``SvInjection`` (:func:`build_state_variables`), and a rebuild
+deletes them first (:func:`clear_topology`). Neither class has any reference field but
+``TopologicalNode``, so neither can exist before the buses do and neither may outlive them -- which
+makes this the only place the association can be written. The values are left unset: a solver, a
+case importer or a telemetry fold fills them in by reaching the object through its bus.
 """
 from __future__ import annotations
 
@@ -31,9 +40,24 @@ if TYPE_CHECKING:
 
 
 def clear_topology(model: GraphModel) -> None:
-    """Delete every TopologicalIsland and TopologicalNode and every reference to them, both sides."""
+    """Delete every TopologicalIsland and TopologicalNode and every reference to them, both sides.
+
+    ``SvVoltage`` and ``SvInjection`` go too, and before the nodes they hang from. Both are state
+    variables *of a bus*: neither is an IdentifiedObject, neither has an mRID, and the only thing
+    either references is its TopologicalNode. So a bus's solved voltage cannot outlive the bus.
+
+    ``model.delete()`` alone does not achieve this. It syncs inverse references, and
+    ``TopologicalNode.SvVoltage`` is a declared field, so deleting a node *nulls* its SvVoltage's
+    reference -- leaving the object in the graph, holding a voltage, belonging to no bus. Measured on
+    a 2,678-node node-breaker model: rebuilding dropped 2,678 nodes to 280 buses while all 2,678
+    SvVoltages survived, 0 of them referencing a live bus, and ``get_node_voltage`` then returned
+    None for all 280 real buses. A PSS/E export reads its bus voltages through that getter, so the
+    solved case was silently lost -- no exception, just no voltages.
+
+    Deleting the dependents first is what makes it a clean sweep rather than a null-out.
+    """
     cim = model.cim
-    for cim_class in (cim.TopologicalIsland, cim.TopologicalNode):
+    for cim_class in (cim.SvVoltage, cim.SvInjection, cim.TopologicalIsland, cim.TopologicalNode):
         for obj in list(model.graph.get(cim_class, {}).values()):
             model.delete(obj)
     # a file may carry only one side of an association, which delete() cannot see from the other
@@ -49,6 +73,41 @@ def bus_roots(index: ModelIndex, cim) -> list[int]:
     forest = spanning_forest(index.linknet, range(1, index.linknet.node_count + 1),
                              crosses=lambda equipment: ties[equipment])
     return forest.tree_of
+
+
+def build_state_variables(model: GraphModel, buses: list) -> None:
+    """Give each bus in *buses* one empty ``SvVoltage`` and one ``SvInjection``, both sides written.
+
+    A bus's state variables are **part of the bus**, which is why they are built here rather than by
+    whoever later fills them in. Only this module knows which ConnectivityNodes merged into which
+    bus, and an ``Sv*`` object has nowhere else to attach: ``SvVoltage``'s only reference field is
+    ``TopologicalNode`` (its fields are ``identifier``, ``angle``, ``phase``, ``v``,
+    ``TopologicalNode``), and ``SvInjection``'s are the same shape. There is no ``ConnectivityNode``
+    field on either, so neither can be written before the buses exist -- an importer reading a
+    node-breaker source has no bus to point at, and the grouping is snapshot-scoped anyway (a
+    different switch state gives different buses).
+
+    The objects are created **empty**: ``v``, ``angle``, ``pInjection`` and ``qInjection`` are all
+    left ``None``. This slice owns the association, not the solved value. A solver, a case importer
+    or the 1 Hz telemetry fold fills them in afterwards by looking the object up through its bus,
+    which is the one join that is always available.
+
+    Each is paired with exactly one bus, because ``get_node_voltage`` raises on a bus holding two
+    balanced ``SvVoltage``s. Note the reverse associations are **lists**, so these append.
+
+    :func:`clear_topology` deletes them again on the next rebuild, before the nodes they hang from.
+    """
+    cim = model.cim
+    for bus in buses:
+        voltage = cim.SvVoltage(TopologicalNode=bus)
+        voltage.uuid()
+        bus.SvVoltage.append(voltage)
+        model.add_to_graph(voltage)
+
+        injection = cim.SvInjection(TopologicalNode=bus)
+        injection.uuid()
+        bus.SvInjection.append(injection)
+        model.add_to_graph(injection)
 
 
 def build_topological_nodes(model: GraphModel) -> list:
@@ -80,6 +139,7 @@ def build_topological_nodes(model: GraphModel) -> list:
             bus.Terminal.append(terminal)
         model.add_to_graph(bus)
         buses.append(bus)
+    build_state_variables(model, buses)
     return buses
 
 

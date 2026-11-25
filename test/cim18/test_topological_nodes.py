@@ -81,6 +81,81 @@ def test_rebuilding_replaces_the_old_topology(ieee13):
     assert all(id(t.TopologicalNode) in in_graph for t in ieee13.graph[cim.Terminal].values())
 
 
+def test_every_bus_gets_one_empty_sv_voltage_and_one_sv_injection(ieee13):
+    """This module owns a bus's state variables: it creates them, because nothing else can.
+
+    Neither class has any reference field but ``TopologicalNode``, so neither can be written before
+    the buses exist. They are created **empty** -- this slice owns the association, not the solved
+    value -- and one per bus, because ``get_node_voltage`` raises on a bus holding two balanced
+    ``SvVoltage``s.
+    """
+    cim = ieee13.cim
+    buses = build_topological_nodes(ieee13)
+    assert len(buses) == 17
+    assert len(ieee13.graph[cim.SvVoltage]) == 17
+    assert len(ieee13.graph[cim.SvInjection]) == 17
+    for bus in buses:
+        [voltage] = bus.SvVoltage
+        [injection] = bus.SvInjection
+        assert voltage.TopologicalNode is bus and injection.TopologicalNode is bus
+        assert voltage.v is None and voltage.angle is None
+        assert injection.pInjection is None and injection.qInjection is None
+
+
+def test_a_rebuild_takes_the_state_variables_with_the_buses(ieee13):
+    """An SvVoltage is a state variable *of a bus*, so it cannot outlive the bus it was solved for.
+
+    ``model.delete()`` alone leaves them behind: ``TopologicalNode.SvVoltage`` is a declared field,
+    so deleting a node only *nulls* the SvVoltage's reference and the object stays in the graph
+    holding a voltage that belongs to no bus. Measured on a 2,678-node node-breaker model before this
+    was fixed: all 2,678 SvVoltages survived a rebuild to 280 buses, none of them referencing a live
+    bus, and ``get_node_voltage`` then returned None for all 280 real buses -- a PSS/E export reads
+    its bus voltages through that getter, so a solved case vanished with no exception raised.
+
+    So a rebuild **replaces** the state variables rather than accumulating them: the count stays at
+    one per bus however many times it runs, and the solved values a caller wrote are gone with the
+    buses they were solved against.
+    """
+    cim = ieee13.cim
+    build_topological_nodes(ieee13)
+    solved = [bus.SvVoltage[0] for bus in ieee13.graph[cim.TopologicalNode].values()]
+    for voltage in solved:
+        voltage.v, voltage.angle = 1.0, 0.0
+
+    build_topological_nodes(ieee13)
+
+    assert len(ieee13.graph[cim.SvVoltage]) == 17, 'one per bus, not two rebuilds worth'
+    assert len(ieee13.graph[cim.SvInjection]) == 17
+    assert len(ieee13.graph[cim.TopologicalNode]) == 17
+    live = {id(v) for v in ieee13.graph[cim.SvVoltage].values()}
+    assert not any(id(v) in live for v in solved), "a bus's solved voltage must not outlive the rebuild"
+    assert all(bus.SvVoltage[0].v is None for bus in ieee13.graph[cim.TopologicalNode].values())
+
+
+def test_a_rebuild_clears_sv_objects_a_caller_added(ieee13):
+    """An extra ``Sv*`` object from anywhere else goes too: ``clear_topology`` sweeps the class.
+
+    The builder writes one of each per bus, but a case importer or an incoming file may carry more.
+    Clearing is by class rather than by walking each bus's lists, so an orphan already in the graph
+    (one whose ``TopologicalNode`` is unset, which ``delete()`` would leave behind) is removed as well.
+    """
+    cim = ieee13.cim
+    build_topological_nodes(ieee13)
+    orphan = cim.SvVoltage(v=2.0)
+    orphan.uuid()
+    ieee13.add_to_graph(orphan)
+    extra = cim.SvInjection(pInjection=1.0)
+    extra.uuid()
+    ieee13.add_to_graph(extra)
+    assert len(ieee13.graph[cim.SvVoltage]) == 18 and len(ieee13.graph[cim.SvInjection]) == 18
+
+    build_topological_nodes(ieee13)
+
+    assert len(ieee13.graph[cim.SvVoltage]) == 17 and len(ieee13.graph[cim.SvInjection]) == 17
+    assert id(orphan) not in {id(v) for v in ieee13.graph[cim.SvVoltage].values()}
+    assert id(extra) not in {id(i) for i in ieee13.graph[cim.SvInjection].values()}
+
+
 def test_feeder_buses_are_not_numbered(ieee13):
     build_topological_nodes(ieee13)
     assert number_buses(ieee13) == 0

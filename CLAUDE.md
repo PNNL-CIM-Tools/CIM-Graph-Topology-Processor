@@ -128,6 +128,23 @@ switching), and writes both sides of every association. cim-graph sets neither s
    `ConnectivityNode.TopologicalNode` (cim17 defect B). There is no BusNameMarker or aliasName.
    **The isolated-shunt fold is not ported**: a shunt behind an open breaker keeps its own bus and a
    dead island, and `inService` is never changed. The fold is a PSS/E-export convention.
+   **This module owns a bus's `SvVoltage` and `SvInjection`, both ends of their lifetime.**
+   `build_state_variables` gives every bus one empty object of each, and `clear_topology` deletes them
+   first on a rebuild, **before the nodes they hang from**.
+
+   *Why creation lives here:* neither class has any reference field but `TopologicalNode` (`SvVoltage`
+   is `identifier`, `angle`, `phase`, `v`, `TopologicalNode`). There is no `ConnectivityNode` field, so
+   neither can be written before the buses exist -- an importer reading a node-breaker source has no
+   bus to point at, and the grouping is snapshot-scoped anyway. They are created **empty**: this layer
+   owns the association, not the solved value, which a solver or a case importer fills in afterwards by
+   reaching the object through its bus. One per bus, because `get_node_voltage` raises on two balanced.
+
+   *Why deletion must precede the nodes:* `model.delete()` alone will not do it. `TopologicalNode.SvVoltage`
+   is a declared field, so deleting a node *nulls* the SvVoltage's reference and leaves the object in the
+   graph holding a voltage that belongs to no bus. Measured on a 2,678-node node-breaker model: all 2,678
+   survived a rebuild to 280 buses, none referencing a live bus, and `get_node_voltage` returned None for
+   all 280 real buses -- so a PSS/E export lost its bus voltages with nothing raised. Clearing is by
+   class, so an orphan already in the graph goes too.
 8. `build_topology` has no `xfmr_boundary`. A bus never spans a transformer, and an island always crosses one.
 
 ### `cimtopology/cim17/`: frozen reference
